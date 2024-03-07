@@ -6,6 +6,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "wmap.h"
 
 int
 sys_fork(void)
@@ -88,4 +89,30 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+// NEED TO IMPLEMENT BASIC WMAP
+int
+sys_wmap(void)
+{
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  return 0;
 }
