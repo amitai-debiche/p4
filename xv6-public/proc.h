@@ -48,7 +48,7 @@ struct proc {
   int killed;                  // If non-zero, have been killed
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
-  struct wmap *my_maps;        // TODO: CORRECT THIS/MAKE IT WORK RIGHT
+  struct wmapinfo *my_maps;        // TODO: CORRECT THIS/MAKE IT WORK RIGHT
   char name[16];               // Process name (debugging)
 };
 

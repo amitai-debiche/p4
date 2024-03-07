@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "wmap.h"
 
 struct {
   struct spinlock lock;
@@ -90,6 +91,22 @@ found:
   p->pid = nextpid++;
 
   release(&ptable.lock);
+
+
+  //Allocate memory for wmapinfo and initialize it
+  p->my_maps = (struct wmapinfo *) kalloc();
+  if (p->my_maps == 0) {
+    p->state = UNUSED;
+    return 0;
+  }
+
+  //Initialize wmapinfo fields
+  p->my_maps->total_mmaps = 0;
+  for (int i = 0; i < MAX_WMAP_INFO; i++) {
+    p->my_maps->addr[i] = 0;
+    p->my_maps->length[i] = 0;
+    p->my_maps->n_loaded_pages[i] = 0;
+  }
 
   // Allocate kernel stack.
   if((p->kstack = kalloc()) == 0){
@@ -532,3 +549,4 @@ procdump(void)
     cprintf("\n");
   }
 }
+
