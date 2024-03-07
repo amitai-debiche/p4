@@ -93,26 +93,26 @@ sys_uptime(void)
 
 // NEED TO IMPLEMENT BASIC WMAP
 int
-sys_wmap(void)
+sys_wmap(void)  
 {
-   
+  uint addr; 
+  int length, flags, fd;
+  
+  //get addr
+  if(argptr(0, (void*)&addr, sizeof(addr)) < 0) {
+    return (uint)-1;
+  }
+  //get other stuff
+  if (argint(1, &length) < 0 || argint(2, &flags) < 0 || argint(3, &fd) < 0){
+    return (uint)-1;
+  }
+
+  //add to struct, information but don't physicall asign pages
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-  return 0;
+ // return (uint)-1;
+  return addr;
 }
