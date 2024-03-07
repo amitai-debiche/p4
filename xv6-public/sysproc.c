@@ -108,8 +108,13 @@ sys_wmap(void)
   }
 
   //add to struct, information but don't physicall asign pages
+  if(myproc()->my_maps->total_mmaps == 16){
+    return (uint)-1;
+  }
 
-
+  int n_maps = ++myproc()->my_maps->total_mmaps;
+  myproc()->my_maps->addr[n_maps] += addr;
+  myproc()->my_maps->length[n_maps] += length;
 
 
 
