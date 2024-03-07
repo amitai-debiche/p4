@@ -259,6 +259,11 @@ exit(void)
     }
   }
 
+  if (curproc->my_maps != 0) {
+    kfree((char*)curproc->my_maps);
+    curproc->my_maps = 0;
+  }
+
   begin_op();
   iput(curproc->cwd);
   end_op();
