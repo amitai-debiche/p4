@@ -121,3 +121,15 @@ sys_wmap(void)
  // return (uint)-1;
   return addr;
 }
+
+int
+sys_wunmap(void)
+{
+  uint addr;
+
+  if (argint(0, (int*)&addr) < 0) {
+    return (uint)-1;
+  }
+
+  return 0;
+}
