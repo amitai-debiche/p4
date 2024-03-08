@@ -91,7 +91,6 @@ sys_uptime(void)
   return xticks;
 }
 
-// NEED TO IMPLEMENT BASIC WMAP
 uint
 sys_wmap(void)  
 {
@@ -107,7 +106,6 @@ sys_wmap(void)
     return (uint)-1;
   }
 
-  //add to struct, information but don't physicall asign pages
   if(myproc()->my_maps->total_mmaps == 16){
     return (uint)-1;
   }
@@ -131,5 +129,22 @@ sys_wunmap(void)
     return (uint)-1;
   }
 
+  //check if address was mapped
+  for (int i = 0; i < myproc()->my_maps->total_mmaps; i++) {
+    if (addr == myproc()->my_maps->addr[i]) {
+      //remove all pgdir stuff and return
+      // TODO: IT WOULD BE BETTER TO DEFINE PAGE SIZE IN SOME HEADER AND USE THAT INSTEAD OF 4096
+      uint n_pages = (myproc()->my_maps->length[i] + 4096 - 1) / 4096;
+      for (int j = 0; j < n_pages; j++) {
+        pte_t *pte = walkpgdir(myproc()->pgdir, addr, 0);
+        //mmu.h macro helpful 
+        uint physical_address = PTE_ADDR(*pte);
+        kfree(P2V(physical_address));
+
+      }
+      return 0;
+    }
+  }
+  //SHOULD I RETURN 0 or -1 if addr doesn't exist??
   return 0;
 }
