@@ -100,15 +100,15 @@ sys_wmap(void)
   
   //get addr
   if(argint(0, (int*)&addr) < 0) {
-    return (uint)-1;
+    return FAILED;
   }
   //get other stuff
   if (argint(1, &length) < 0 || argint(2, &flags) < 0 || argint(3, &fd) < 0){
-    return (uint)-1;
+    return FAILED;
   }
 
   if(myproc()->my_maps->total_mmaps == 16){
-    return (uint)-1;
+    return FAILED;
   }
 
   myproc()->my_maps->total_mmaps += 1;
@@ -134,7 +134,7 @@ sys_wunmap(void)
   uint addr;
 
   if (argint(0, (int*)&addr) < 0) {
-    return (uint)-1;
+    return FAILED;
   }
 
   //check if address was mapped
@@ -157,9 +157,9 @@ sys_wunmap(void)
       myproc()->my_maps->length[i] = 0;
      
       cprintf("Page should've been freed\n");
-      return 0;
+      return SUCCESS;
     }
   }
-  //SHOULD I RETURN 0 or -1 if addr doesn't exist??
-  return 0;
+  //Return -1 if addr doesn't exist, since it still failed
+  return FAILED;
 }
