@@ -92,14 +92,14 @@ sys_uptime(void)
 }
 
 // NEED TO IMPLEMENT BASIC WMAP
-int
+uint
 sys_wmap(void)  
 {
   uint addr; 
   int length, flags, fd;
   
   //get addr
-  if(argptr(0, (void*)&addr, sizeof(addr)) < 0) {
+  if(argint(0, (int*)&addr) < 0) {
     return (uint)-1;
   }
   //get other stuff
@@ -113,8 +113,8 @@ sys_wmap(void)
   }
 
   int n_maps = ++myproc()->my_maps->total_mmaps;
-  myproc()->my_maps->addr[n_maps] += addr;
-  myproc()->my_maps->length[n_maps] += length;
+  myproc()->my_maps->addr[n_maps - 1] = addr;
+  myproc()->my_maps->length[n_maps - 1] = length;
 
 
 

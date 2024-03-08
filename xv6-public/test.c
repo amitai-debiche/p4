@@ -1,32 +1,24 @@
 #include "types.h"
-#include "stat.h"
 #include "user.h"
 
-#define SIZE (4096 * 10)  // Size of the memory region to map (10 pages)
+#define MAP_FIXED       0x0008
+#define MAP_SHARED      0x0002
+#define MAP_ANONYMOUS   0x0004
 
-int
-main(int argc, char *argv[])
-{
-    char *addr;
-
-    // Map a memory region using wmap
-    addr = wmap(0, SIZE, 0, 0);
-
-    // Check if wmap succeeded
-    if (addr == (char *)FAILED) {
-        printf(1, "wmap failed\n");
+int main() {
+    uint address = wmap(0x60000000, 8192, MAP_FIXED | MAP_SHARED | MAP_ANONYMOUS, -1);
+    if (address == 0) {
+        printf(1, "Error: wmap failed\n");
         exit();
     }
 
-    // Access the memory region to trigger page faults
-    printf(1, "Accessing mapped memory...\n");
-    for (int i = 0; i < SIZE; i++) {
-        // Access memory (read)
-        char value = addr[i];
-    }
+    printf(1, "Memory mapped successfully at address: %x\n", address);
 
-    printf(1, "Mapped memory accessed successfully\n");
+    // Access the mapped memory region
+    *(int *)address = 123; // Write to the memory
 
-    // Exit
+    // Read from the memory and print its value
+    printf(1, "Value at mapped address: %d\n", *(int *)address);
+
     exit();
 }
