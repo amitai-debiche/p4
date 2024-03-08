@@ -18,13 +18,13 @@ int main() {
     *(int *)(address + 1) = 234;
 
     // Read from the memory and print its value
-    printf(1, "Value at mapped address: %d\n", *(int *)address);
+    printf(1, "Value at mapped address: %d\n", *(int *)(address + 1));
 
     if (wunmap(address) < 0){
         printf(1, "Error: wunmap failed\n");
         exit();
     }
-    printf(1, "This should seg fault?: %d\n", *(int *)address);
+    printf(1, "This should seg fault?: %d\n", *(int *)(address + 1));
 
     exit();
 }
