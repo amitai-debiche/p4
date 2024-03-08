@@ -111,6 +111,9 @@ sys_wmap(void)
   }
 
   int n_maps = ++myproc()->my_maps->total_mmaps;
+  //ADDR NEEDS TO GO IN A SPOT, NOT NECESSARILY n_maps, 
+  //because if a spot in middle is freed want to be able to still use it for addr
+  //only thing is addr and length should have same index
   myproc()->my_maps->addr[n_maps - 1] = addr;
   myproc()->my_maps->length[n_maps - 1] = length;
 
@@ -140,8 +143,13 @@ sys_wunmap(void)
         //mmu.h macro helpful 
         uint physical_address = PTE_ADDR(*pte);
         kfree(P2V(physical_address));
-
+        *pte = 0;
+        myproc()->my_maps->n_loaded_pages[i] -= 1;
       }
+      myproc()->my_maps->total_mmaps -= 1;
+      myproc()->my_maps->addr[i] = 0;
+      myproc()->my_maps->length[i] = 0;
+      
       return 0;
     }
   }

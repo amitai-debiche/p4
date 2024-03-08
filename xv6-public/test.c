@@ -20,5 +20,11 @@ int main() {
     // Read from the memory and print its value
     printf(1, "Value at mapped address: %d\n", *(int *)address);
 
+    if (wunmap(address) < 0){
+        printf(1, "Error: wunmap failed\n");
+        exit();
+    }
+    printf(1, "This should seg fault?: %d\n", *(int *)address);
+
     exit();
 }
