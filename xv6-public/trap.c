@@ -79,9 +79,10 @@ trap(struct trapframe *tf)
     lapiceoi();
     break;
   case T_PGFLT: //T_PGFLT = 14
+    cprintf("page fault occured");
     int addr_exist = 0;
     uint fault_addr = rcr2(); //get fault address
-    for (int i = 0; i < myproc()->my_maps->total_mmaps; i++) {
+    for (int i = 0; i < MAX_WMMAP_INFO; i++) {
       if (fault_addr >= myproc()->my_maps->addr[i] && 
           fault_addr < myproc()->my_maps->addr[i] + myproc()->my_maps->length[i]) {
         //Handle lazy allocation - map exists so we want to allocate real physical pages

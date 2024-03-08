@@ -258,7 +258,8 @@ exit(void)
       curproc->ofile[fd] = 0;
     }
   }
-
+  
+  //this will need to be modified
   if (curproc->my_maps != 0) {
     kfree((char*)curproc->my_maps);
     curproc->my_maps = 0;

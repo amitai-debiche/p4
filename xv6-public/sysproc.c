@@ -91,6 +91,7 @@ sys_uptime(void)
   return xticks;
 }
 
+//TODO: NEED TO DO SOME DEBUGGING HERE SOME STUFF AINT RIGHT
 uint
 sys_wmap(void)  
 {
@@ -110,12 +111,16 @@ sys_wmap(void)
     return (uint)-1;
   }
 
-  int n_maps = ++myproc()->my_maps->total_mmaps;
+  myproc()->my_maps->total_mmaps += 1;
   //ADDR NEEDS TO GO IN A SPOT, NOT NECESSARILY n_maps, 
   //because if a spot in middle is freed want to be able to still use it for addr
   //only thing is addr and length should have same index
-  myproc()->my_maps->addr[n_maps - 1] = addr;
-  myproc()->my_maps->length[n_maps - 1] = length;
+  for (int i = 0; i < MAX_WMMAP_INFO; i++){
+      if (myproc()->my_maps->addr[i] == 0){
+        myproc()->my_maps->addr[i] = addr;
+        myproc()->my_maps->length[i] = length;
+      }
+  }
 
 
 
@@ -133,23 +138,25 @@ sys_wunmap(void)
   }
 
   //check if address was mapped
-  for (int i = 0; i < myproc()->my_maps->total_mmaps; i++) {
+  for (int i = 0; i < MAX_WMMAP_INFO; i++) {
     if (addr == myproc()->my_maps->addr[i]) {
       //remove all pgdir stuff and return
       // TODO: IT WOULD BE BETTER TO DEFINE PAGE SIZE IN SOME HEADER AND USE THAT INSTEAD OF 4096
       uint n_pages = (myproc()->my_maps->length[i] + 4096 - 1) / 4096;
+      pte_t *pte;
+      uint physical_address;
       for (int j = 0; j < n_pages; j++) {
-        pte_t *pte = walkpgdir(myproc()->pgdir, (void*)(addr + (j * 4096)), 0);
-        //mmu.h macro helpful 
-        uint physical_address = PTE_ADDR(*pte);
+        pte = walkpgdir(myproc()->pgdir, (void*)(addr + (j * 4096)), 0);
+        physical_address = PTE_ADDR(*pte);
         kfree(P2V(physical_address));
         *pte = 0;
-        myproc()->my_maps->n_loaded_pages[i] -= 1;
       }
+      myproc()->my_maps->n_loaded_pages[i] -= n_pages;
       myproc()->my_maps->total_mmaps -= 1;
       myproc()->my_maps->addr[i] = 0;
       myproc()->my_maps->length[i] = 0;
-      
+     
+      cprintf("Page should've been freed\n");
       return 0;
     }
   }
