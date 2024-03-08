@@ -123,8 +123,9 @@ sys_wmap(void)
       }
   }
 
- // return (uint)-1;
-  return addr;
+  //might want to make above code and this return clearer idk
+  return FAILED;
+
 }
 
 int

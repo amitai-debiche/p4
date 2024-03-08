@@ -79,7 +79,6 @@ trap(struct trapframe *tf)
     lapiceoi();
     break;
   case T_PGFLT: //T_PGFLT = 14
-    cprintf("page fault occured");
     int addr_exist = 0;
     uint fault_addr = rcr2(); //get fault address
     for (int i = 0; i < MAX_WMMAP_INFO; i++) {
