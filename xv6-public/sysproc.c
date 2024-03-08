@@ -162,3 +162,8 @@ sys_wunmap(void)
   //Return -1 if addr doesn't exist, since it still failed
   return FAILED;
 }
+int
+sys_wremap(void)
+{
+  return 0;
+}

@@ -87,6 +87,7 @@ trap(struct trapframe *tf)
         //Handle lazy allocation - map exists so we want to allocate real physical pages
         char *mem;
         uint pages_needed = (myproc()->my_maps->length[i] + 4096 - 1) / 4096;
+        cprintf("%d\n", myproc()->my_maps->length[i]);
         for (int j = 0; j < pages_needed; j++) {
           mem = kalloc();
           if (mappages(myproc()->pgdir, (void*)(myproc()->my_maps->addr[i] + (j * 4096)), 4096, V2P(mem), PTE_W | PTE_U) < 0){
