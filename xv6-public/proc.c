@@ -102,7 +102,7 @@ found:
 
   //Initialize wmapinfo fields
   p->my_maps->total_mmaps = 0;
-  for (int i = 0; i < MAX_WMAP_INFO; i++) {
+  for (int i = 0; i < MAX_WMMAP_INFO; i++) {
     p->my_maps->addr[i] = 0;
     p->my_maps->length[i] = 0;
     p->my_maps->n_loaded_pages[i] = 0;

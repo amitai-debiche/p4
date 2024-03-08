@@ -7,6 +7,7 @@
 #include "x86.h"
 #include "traps.h"
 #include "spinlock.h"
+#include "wmap.h"
 
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
@@ -84,14 +85,17 @@ trap(struct trapframe *tf)
           fault_addr < myproc()->my_maps->addr[i] + myproc()->my_maps->length[i]) {
         //Handle lazy allocation - map exists so we want to allocate real physical pages
         char *mem;
-        for (int j = 0; j < (myproc()->my_maps->length[i] / 4096); j++) {
+        uint pages_needed = (myproc()->my_maps->length[i] + 4096 - 1) / 4096;
+        for (int j = 0; j < pages_needed; j++) {
           mem = kalloc();
-          if (mappages(myproc->pgdir, myproc()->my_maps->addr[i] + (j * 4096), 4096, V2P(mem), PTE_W | PTE_U) < 0){
+          if (mappages(myproc()->pgdir, (void*)(fault_addr + (i * 4096)), 4096, V2P(mem), PTE_W | PTE_U) < 0){
             cprintf("Page mapping failed\n");
             myproc()->killed = 1;
             break;
           }
+
         }
+        myproc()->my_maps->n_loaded_pages[i] += pages_needed;
         break;
       }
     }
