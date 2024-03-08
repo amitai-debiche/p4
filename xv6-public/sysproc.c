@@ -136,7 +136,7 @@ sys_wunmap(void)
       // TODO: IT WOULD BE BETTER TO DEFINE PAGE SIZE IN SOME HEADER AND USE THAT INSTEAD OF 4096
       uint n_pages = (myproc()->my_maps->length[i] + 4096 - 1) / 4096;
       for (int j = 0; j < n_pages; j++) {
-        pte_t *pte = walkpgdir(myproc()->pgdir, addr, 0);
+        pte_t *pte = walkpgdir(myproc()->pgdir, (void*)(addr + (j * 4096)), 0);
         //mmu.h macro helpful 
         uint physical_address = PTE_ADDR(*pte);
         kfree(P2V(physical_address));
