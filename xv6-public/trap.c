@@ -77,7 +77,28 @@ trap(struct trapframe *tf)
             cpuid(), tf->cs, tf->eip);
     lapiceoi();
     break;
-
+  case T_PGFLT: //T_PGFLT = 14
+    uint fault_addr = rcr2(); //get fault address
+    for (int i = 0; i < myproc()->my_maps->total_mmaps; i++) {
+      if (fault_addr >= myproc()->my_maps->addr[i] && 
+          fault_addr < myproc()->my_maps->addr[i] + myproc()->my_maps->length[i]) {
+        //Handle lazy allocation - map exists so we want to allocate real physical pages
+        char *mem;
+        for (int j = 0; j < (myproc()->my_maps->length[i] / 4096); j++) {
+          mem = kalloc();
+          if (mappages(myproc->pgdir, myproc()->my_maps->addr[i] + (j * 4096), 4096, V2P(mem), PTE_W | PTE_U) < 0){
+            cprintf("Page mapping failed\n");
+            myproc()->killed = 1;
+            break;
+          }
+        }
+        break;
+      }
+    }
+    //else
+    cprintf("Segmentation Fault\n");
+    myproc()->killed = 1;
+    break;
   //PAGEBREAK: 13
   default:
     if(myproc() == 0 || (tf->cs&3) == 0){
@@ -103,7 +124,7 @@ trap(struct trapframe *tf)
   // Force process to give up CPU on clock tick.
   // If interrupts were on while locks held, would need to check nlock.
   if(myproc() && myproc()->state == RUNNING &&
-     tf->trapno == T_IRQ0+IRQ_TIMER)
+     tf->trapno == T_IRQ0+IRQ_TIMER) 
     yield();
 
   // Check if the process has been killed since we yielded
