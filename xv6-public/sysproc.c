@@ -187,3 +187,8 @@ sys_wremap(void)
   }
   return FAILED;
 }
+
+int sys_getpgdirinfo(struct pgdirinfo *pdinfo) {
+  
+ return SUCCESS; 
+}
