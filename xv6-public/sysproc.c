@@ -111,21 +111,25 @@ sys_wmap(void)
     return FAILED;
   }
 
-  myproc()->my_maps->total_mmaps += 1;
-  //ADDR NEEDS TO GO IN A SPOT, NOT NECESSARILY n_maps, 
-  //because if a spot in middle is freed want to be able to still use it for addr
-  //only thing is addr and length should have same index
-  for (int i = 0; i < MAX_WMMAP_INFO; i++){
-      if (myproc()->my_maps->addr[i] == 0){
-        myproc()->my_maps->addr[i] = addr;
-        myproc()->my_maps->length[i] = length;
-        return addr;
-      }
+  // Ensure no overlap with existing mappings
+  for (int i = 0; i < MAX_WMMAP_INFO; i++) {
+    if (myproc()->my_maps->addr[i] != 0 && // Check only initialized entries
+        addr >= myproc()->my_maps->addr[i] &&
+        addr < myproc()->my_maps->addr[i] + myproc()->my_maps->length[i]) {
+      return FAILED; // Overlap detected
+    }
   }
-
-  //might want to make above code and this return clearer idk
-  return FAILED;
-
+  //make sure old mapping doesn't overlap new
+ // Find an empty slot for the new mapping
+  for (int i = 0; i < MAX_WMMAP_INFO; i++) {
+    if (myproc()->my_maps->addr[i] == 0) {
+      myproc()->my_maps->addr[i] = addr;
+      myproc()->my_maps->length[i] = length;
+      myproc()->my_maps->total_mmaps++;
+      return addr;
+    }
+  }
+  return FAILED; // No empty slot found
 }
 
 int
@@ -137,33 +141,49 @@ sys_wunmap(void)
     return FAILED;
   }
 
-  //check if address was mapped
   for (int i = 0; i < MAX_WMMAP_INFO; i++) {
     if (addr == myproc()->my_maps->addr[i]) {
-      //remove all pgdir stuff and return
-      // TODO: IT WOULD BE BETTER TO DEFINE PAGE SIZE IN SOME HEADER AND USE THAT INSTEAD OF 4096
-      uint n_pages = (myproc()->my_maps->length[i] + 4096 - 1) / 4096;
-      pte_t *pte;
-      uint physical_address;
+      uint n_pages = (myproc()->my_maps->length[i] + PGSIZE - 1) / PGSIZE;
       for (int j = 0; j < n_pages; j++) {
-        pte = walkpgdir(myproc()->pgdir, (void*)(addr + (j * 4096)), 0);
-        physical_address = PTE_ADDR(*pte);
-        kfree(P2V(physical_address));
-        *pte = 0;
+        pte_t *pte = walkpgdir(myproc()->pgdir, (void*)(addr + j * PGSIZE), 0);
+        if (pte && (*pte & PTE_P)) {
+          uint pa = PTE_ADDR(*pte);
+          if (pa != 0) 
+              kfree(P2V(pa));
+          *pte = 0;
+          myproc()->my_maps->n_loaded_pages[i]--;
+        }
       }
-      myproc()->my_maps->n_loaded_pages[i] -= n_pages;
-      myproc()->my_maps->total_mmaps -= 1;
+      myproc()->my_maps->total_mmaps--;
       myproc()->my_maps->addr[i] = 0;
-      myproc()->my_maps->length[i] = 0;
-     
+      myproc()->my_maps->length[i] = 0; 
       return SUCCESS;
     }
   }
-  //Return -1 if addr doesn't exist, since it still failed
-  return FAILED;
+  
+  return FAILED; // Address not found
 }
+
+//IMPLEMENT THIS LAST
 int
 sys_wremap(void)
 {
-  return 0;
+
+  uint old_addr;
+  //only thing is addr and length should have same index
+  int old_size, new_size, flags;
+
+  if(argint(0, (int*)&old_addr) < 0) {
+    return FAILED;
+  }
+
+  if (argint(1, &old_size) < 0 || argint(2, &new_size) < 0 || argint(3, &flags) < 0){
+    return FAILED;
+  }
+
+  for (int i = 0; i < MAX_WMMAP_INFO; i++){
+    if (old_addr == myproc()->my_maps->addr[i] && old_size == myproc()->my_maps->addr[i]) {
+    }
+  }
+  return FAILED;
 }
