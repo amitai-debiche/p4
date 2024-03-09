@@ -1,6 +1,7 @@
 struct stat;
 struct rtcdate;
 struct pgdirinfo;
+struct wmapinfo;
 
 // system calls
 int fork(void);
@@ -28,6 +29,7 @@ uint wmap(uint, int, int, int);
 int wunmap(uint);
 uint wremap(uint, int, int, int);
 int getpgdirinfo(struct pgdirinfo*);
+int getwmapinfo(struct wmapinfo*);
 
 // ulib.c
 int stat(const char*, struct stat*);

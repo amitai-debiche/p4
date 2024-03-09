@@ -1,5 +1,6 @@
 #include "types.h"
 #include "user.h"
+#include "wmap.h"
 
 #define MAP_FIXED       0x0008
 #define MAP_SHARED      0x0002
@@ -54,17 +55,45 @@ int main() {
     // Read from the memory and print its value
     printf(1, "Value at mapped address: %d\n", *(int *)addr2);
 
-     if (wunmap(address) < 0){
+    // Print memory mapping information
+    struct wmapinfo wminfo;
+    if (getwmapinfo(&wminfo) < 0) {
+        printf(1, "Error: getwmapinfo failed\n");
+        exit();
+    }
+    printf(1, "Memory Mapping Information:\n");
+    for (int i = 0; i < wminfo.total_mmaps; i++) {
+        printf(1, "Mapping %d:\n", i+1);
+        printf(1, "Address: %x\n", wminfo.addr[i]);
+        printf(1, "Length: %d\n", wminfo.length[i]);
+        printf(1, "Number of Loaded Pages: %d\n", wminfo.n_loaded_pages[i]);
+    }
+
+
+    if (wunmap(address) < 0){
         printf(1, "Error: wunmap failed\n");
         exit();
     }
 
-     if (wunmap(addr2) < 0){
+    if (wunmap(addr2) < 0){
         printf(1, "Error: wunmap failed\n");
         exit();
     }
 
-    printf(1, "This should seg fault?: %d\n", *(int *)address);
+    // Test getwmapinfo
+    if (getwmapinfo(&wminfo) < 0) {
+        printf(1, "Error: getwmapinfo failed\n");
+        exit();
+    }
+
+    // Print memory mapping information
+    printf(1, "Memory Mapping Information:\n");
+    for (int i = 0; i < wminfo.total_mmaps; i++) {
+        printf(1, "Mapping %d:\n", i+1);
+        printf(1, "Address: %x\n", wminfo.addr[i]);
+        printf(1, "Length: %d\n", wminfo.length[i]);
+        printf(1, "Number of Loaded Pages: %d\n", wminfo.n_loaded_pages[i]);
+    }
 
     exit();
 }

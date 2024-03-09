@@ -192,3 +192,23 @@ int sys_getpgdirinfo(struct pgdirinfo *pdinfo) {
   
  return SUCCESS; 
 }
+
+
+int
+sys_getwmapinfo(void)
+{
+  //get pointer
+  struct wmapinfo *wminfo;
+  if (argptr(0, (char**)&wminfo, sizeof(*wminfo)) < 0)
+    return FAILED;
+
+ // Copy memory mapping information to user space
+  if (copyout(myproc()->pgdir, (uint)wminfo->addr, myproc()->my_maps->addr, sizeof(myproc()->my_maps->addr)) < 0 ||
+      copyout(myproc()->pgdir, (uint)wminfo->length, myproc()->my_maps->length, sizeof(myproc()->my_maps->length)) < 0 ||
+      copyout(myproc()->pgdir, (uint)wminfo->n_loaded_pages, myproc()->my_maps->n_loaded_pages, sizeof(myproc()->my_maps->n_loaded_pages)) < 0 ||
+      copyout(myproc()->pgdir, (uint)&(wminfo->total_mmaps), &(myproc()->my_maps->total_mmaps), sizeof(myproc()->my_maps->total_mmaps)) < 0) {
+        return -1;
+  }
+  return SUCCESS;
+    
+}
