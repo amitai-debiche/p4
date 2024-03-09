@@ -167,3 +167,8 @@ sys_wremap(void)
 {
   return 0;
 }
+
+int sys_getpgdirinfo(struct pgdirinfo *pdinfo) {
+  
+ return SUCCESS; 
+}
