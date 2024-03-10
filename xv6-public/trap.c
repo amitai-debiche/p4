@@ -79,35 +79,34 @@ trap(struct trapframe *tf)
     lapiceoi();
     break;
   case T_PGFLT: //T_PGFLT = 14
+    uint fault_addr = rcr2();
     int addr_exist = 0;
-    uint fault_addr = rcr2(); //get fault address
     for (int i = 0; i < MAX_WMMAP_INFO; i++) {
-      if (fault_addr >= myproc()->my_maps->addr[i] && 
-          fault_addr < myproc()->my_maps->addr[i] + myproc()->my_maps->length[i]) {
-        //Handle lazy allocation - map exists so we want to allocate real physical pages
-        char *mem;
-        uint pages_needed = (myproc()->my_maps->length[i] + 4096 - 1) / 4096;
-        cprintf("%d\n", myproc()->my_maps->length[i]);
-        for (int j = 0; j < pages_needed; j++) {
-          mem = kalloc();
-          if (mappages(myproc()->pgdir, (void*)(myproc()->my_maps->addr[i] + (j * 4096)), 4096, V2P(mem), PTE_W | PTE_U) < 0){
-            myproc()->killed = 1;
+        if (myproc()->my_maps->addr[i] &&
+                fault_addr >= myproc()->my_maps->addr[i] && 
+                fault_addr < myproc()->my_maps->addr[i] + myproc()->my_maps->length[i]) {
+            char *mem = kalloc();
+            if (!mem) {
+                myproc()->killed = 1;
+                break;
+            }
+            memset(mem, 0, PGSIZE); // Initialize memory to zero
+            if (mappages(myproc()->pgdir, (void*)PGROUNDDOWN(fault_addr), PGSIZE, V2P(mem), PTE_W | PTE_U) < 0) {
+                kfree(mem);
+                myproc()->killed = 1;
+                break;
+            }
+            myproc()->my_maps->n_loaded_pages[i]++;
+            addr_exist = 1;
             break;
-          }
-
         }
-        myproc()->my_maps->n_loaded_pages[i] += pages_needed;
-        addr_exist = 1;
-        break;
-      }
     }
-    //else
-    if (addr_exist != 1){
-      cprintf("Segmentation Fault\n");
-      myproc()->killed = 1;
+    if (!addr_exist) {
+        cprintf("Segmentation Fault\n");
+        myproc()->killed = 1;
     }
     break;
-  //PAGEBREAK: 13
+ //PAGEBREAK: 13
   default:
     if(myproc() == 0 || (tf->cs&3) == 0){
       // In kernel, it must be our mistake.

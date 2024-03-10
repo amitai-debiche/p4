@@ -35,7 +35,7 @@ int main() {
     printf(1, "Value at mapped address + 1: %d\n", *(int *)(address + 1));
     printf(1, "Value at mapped address + 2: %d\n", *(int *)(address + 2));
 
-    if (wunmap(address) < 0){
+    if (wunmap((uint)address) < 0){
         printf(1, "Error: wunmap failed\n");
         exit();
     }

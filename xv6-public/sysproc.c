@@ -97,6 +97,10 @@ sys_wmap(void)
 {
   uint addr; 
   int length, flags, fd;
+
+  //Modify your wmap such that it's able to search for an available region in the process address space. This should make your wmap work without MAP_FIXED.
+
+  
   
   //get addr
   if(argint(0, (int*)&addr) < 0) {
@@ -111,21 +115,61 @@ sys_wmap(void)
     return FAILED;
   }
 
-  myproc()->my_maps->total_mmaps += 1;
-  //ADDR NEEDS TO GO IN A SPOT, NOT NECESSARILY n_maps, 
-  //because if a spot in middle is freed want to be able to still use it for addr
-  //only thing is addr and length should have same index
-  for (int i = 0; i < MAX_WMMAP_INFO; i++){
-      if (myproc()->my_maps->addr[i] == 0){
-        myproc()->my_maps->addr[i] = addr;
-        myproc()->my_maps->length[i] = length;
-        return addr;
-      }
+  int new_addr_flag = 0;
+
+  //I need to sort myproc()->my_maps by addr 
+  sort_wmapinfo(myproc()->my_maps);
+  
+  //if MAP_FIXED make sure specified address space is available
+  if (addr % PGSIZE != 0 || addr < 0x60000000 || addr > 0x80000000){
+    if (flags & MAP_FIXED){
+      return FAILED;
+    }
+    new_addr_flag = 1;
   }
 
-  //might want to make above code and this return clearer idk
-  return FAILED;
-
+  if (flags & MAP_ANONYMOUS) {
+  }
+  //check free addr space?
+  for (int i = 0; i < MAX_WMMAP_INFO; i++) {
+    if (myproc()->my_maps->addr[i] != 0 && // Check only initialized entries
+        addr >= myproc()->my_maps->addr[i] &&
+        addr < myproc()->my_maps->addr[i] + myproc()->my_maps->length[i]) {
+      if (flags & MAP_FIXED){
+        return FAILED;
+      }
+      new_addr_flag = 1;
+    } else if (i > 0 && myproc()->my_maps->addr[i-1] != 0 && myproc()->my_maps->addr[i] != 0 &&
+              myproc()->my_maps->addr[i-1] + myproc()->my_maps->length[i-1] < addr &&
+              myproc()->my_maps->addr[i] > addr){
+      if (addr + length > myproc()->my_maps->addr[i]){
+        if (flags & MAP_FIXED){
+          return FAILED;
+        }
+        new_addr_flag = 1;
+      }
+    }
+  }
+  if (!new_addr_flag){
+    for (int i = 0; i < MAX_WMMAP_INFO; i++) {
+      if (myproc()->my_maps->addr[i] == 0) {
+        myproc()->my_maps->addr[i] = addr;
+        myproc()->my_maps->length[i] = length;
+        myproc()->my_maps->total_mmaps++;
+        return myproc()->my_maps->addr[i];
+      }
+    }
+  }else if (new_addr_flag){
+    for (int i = 1; i < MAX_WMMAP_INFO; i++) {
+      if (myproc()->my_maps->addr[i] == 0) {
+        myproc()->my_maps->addr[i] = myproc()->my_maps->addr[i-1] + myproc()->my_maps->length[i-1];
+        myproc()->my_maps->length[i] = length;
+        myproc()->my_maps->total_mmaps++;
+        return myproc()->my_maps->addr[i];
+      }
+    }
+  }
+ return FAILED; // No empty slot found
 }
 
 int
@@ -137,35 +181,51 @@ sys_wunmap(void)
     return FAILED;
   }
 
-  //check if address was mapped
   for (int i = 0; i < MAX_WMMAP_INFO; i++) {
     if (addr == myproc()->my_maps->addr[i]) {
-      //remove all pgdir stuff and return
-      // TODO: IT WOULD BE BETTER TO DEFINE PAGE SIZE IN SOME HEADER AND USE THAT INSTEAD OF 4096
-      uint n_pages = (myproc()->my_maps->length[i] + 4096 - 1) / 4096;
-      pte_t *pte;
-      uint physical_address;
+      uint n_pages = (myproc()->my_maps->length[i] + PGSIZE - 1) / PGSIZE;
       for (int j = 0; j < n_pages; j++) {
-        pte = walkpgdir(myproc()->pgdir, (void*)(addr + (j * 4096)), 0);
-        physical_address = PTE_ADDR(*pte);
-        kfree(P2V(physical_address));
-        *pte = 0;
+        pte_t *pte = walkpgdir(myproc()->pgdir, (void*)(addr + j * PGSIZE), 0);
+        if (pte && (*pte & PTE_P)) {
+          uint pa = PTE_ADDR(*pte);
+          if (pa != 0) 
+              kfree(P2V(pa));
+          *pte = 0;
+          myproc()->my_maps->n_loaded_pages[i]--;
+        }
       }
-      myproc()->my_maps->n_loaded_pages[i] -= n_pages;
-      myproc()->my_maps->total_mmaps -= 1;
+      myproc()->my_maps->total_mmaps--;
       myproc()->my_maps->addr[i] = 0;
-      myproc()->my_maps->length[i] = 0;
-     
+      myproc()->my_maps->length[i] = 0; 
       return SUCCESS;
     }
   }
-  //Return -1 if addr doesn't exist, since it still failed
-  return FAILED;
+  
+  return FAILED; // Address not found
 }
+
+//IMPLEMENT THIS LAST
 int
 sys_wremap(void)
 {
-  return 0;
+
+  uint old_addr;
+  //only thing is addr and length should have same index
+  int old_size, new_size, flags;
+
+  if(argint(0, (int*)&old_addr) < 0) {
+    return FAILED;
+  }
+
+  if (argint(1, &old_size) < 0 || argint(2, &new_size) < 0 || argint(3, &flags) < 0){
+    return FAILED;
+  }
+
+  for (int i = 0; i < MAX_WMMAP_INFO; i++){
+    if (old_addr == myproc()->my_maps->addr[i] && old_size == myproc()->my_maps->addr[i]) {
+    }
+  }
+  return FAILED;
 }
 
 int sys_getpgdirinfo(void) {
@@ -202,3 +262,21 @@ int sys_getpgdirinfo(void) {
   return SUCCESS; 
 }
 
+int
+sys_getwmapinfo(void)
+{
+  //get pointer
+  struct wmapinfo *wminfo;
+  if (argptr(0, (char**)&wminfo, sizeof(*wminfo)) < 0)
+    return FAILED;
+
+ // Copy memory mapping information to user space
+  if (copyout(myproc()->pgdir, (uint)wminfo->addr, myproc()->my_maps->addr, sizeof(myproc()->my_maps->addr)) < 0 ||
+      copyout(myproc()->pgdir, (uint)wminfo->length, myproc()->my_maps->length, sizeof(myproc()->my_maps->length)) < 0 ||
+      copyout(myproc()->pgdir, (uint)wminfo->n_loaded_pages, myproc()->my_maps->n_loaded_pages, sizeof(myproc()->my_maps->n_loaded_pages)) < 0 ||
+      copyout(myproc()->pgdir, (uint)&(wminfo->total_mmaps), &(myproc()->my_maps->total_mmaps), sizeof(myproc()->my_maps->total_mmaps)) < 0) {
+        return -1;
+  }
+  return SUCCESS;
+    
+}
