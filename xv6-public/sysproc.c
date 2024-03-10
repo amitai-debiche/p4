@@ -240,19 +240,22 @@ int sys_getpgdirinfo(void) {
   uint curPA = 0;
   uint n_upages = 0;
 
-  while(curVA < KERNBASE) {
+  while(curVA < KERNBASE) { // brute force through every possible VA on a different page
+    /*
     pde_t pdindex = PDX(curVA);
     pte_t ptindex = PTX(curVA);
     pde_t *pde = &pgdir[pdindex];
     pte_t *pte = &pde[ptindex];
-    if(*pte & PTE_U) {
+    */
+    pte_t *pte = walkpgdir(pgdir, (void *)curVA, 0);
+    if(*pte & PTE_U) { // if it is a user page
       uint ppn = PTE_ADDR(*pte);
       curPA = (ppn << PTXSHIFT) | (curVA & (PGSIZE - 1));
       if(n_upages < 32) {
 	pdinfo->va[n_upages] = curVA;
 	pdinfo->pa[n_upages] = curPA;
+	n_upages++;
       }
-      n_upages++;
     }
 
     curVA = PGROUNDDOWN(curVA + PGSIZE);

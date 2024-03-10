@@ -14,9 +14,9 @@ int main() {
     }
 
     printf(1, "n_upages: %d\n", testpgdir.n_upages);
-    for(int i = 0; i < testpgdir.n_upages; i++) {
-	printf(1, "va: %d   pa: %d\n", testpgdir.va[i], testpgdir.pa[i]);
-    }	
+    for(int i = 0; i < ((testpgdir.n_upages > 32) ? 32 : testpgdir.n_upages); i++) {
+	printf(1, "va: %p   pa: %p\n", testpgdir.va[i], testpgdir.pa[i]);
+    }
     
 
     uint address = wmap(0x60000000, 4096*4, MAP_FIXED | MAP_SHARED | MAP_ANONYMOUS, -1);
