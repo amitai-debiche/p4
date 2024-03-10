@@ -556,3 +556,26 @@ procdump(void)
   }
 }
 
+void sort_wmapinfo(struct wmapinfo *info) {
+    int i, j, temp;
+    for (i = 0; i < info->total_mmaps - 1; i++) {
+        for (j = 0; j < info->total_mmaps - i - 1; j++) {
+            if (info->addr[j] > info->addr[j + 1]) {
+                // Swap addr
+                temp = info->addr[j];
+                info->addr[j] = info->addr[j + 1];
+                info->addr[j + 1] = temp;
+                
+                // Swap length
+                temp = info->length[j];
+                info->length[j] = info->length[j + 1];
+                info->length[j + 1] = temp;
+                
+                // Swap n_loaded_pages
+                temp = info->n_loaded_pages[j];
+                info->n_loaded_pages[j] = info->n_loaded_pages[j + 1];
+                info->n_loaded_pages[j + 1] = temp;
+            }
+        }
+    }
+}

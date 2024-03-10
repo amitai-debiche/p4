@@ -97,6 +97,10 @@ sys_wmap(void)
 {
   uint addr; 
   int length, flags, fd;
+
+  //Modify your wmap such that it's able to search for an available region in the process address space. This should make your wmap work without MAP_FIXED.
+
+  
   
   //get addr
   if(argint(0, (int*)&addr) < 0) {
@@ -111,25 +115,61 @@ sys_wmap(void)
     return FAILED;
   }
 
-  // Ensure no overlap with existing mappings
+  int new_addr_flag = 0;
+
+  //I need to sort myproc()->my_maps by addr 
+  sort_wmapinfo(myproc()->my_maps);
+  
+  //if MAP_FIXED make sure specified address space is available
+  if (addr % PGSIZE != 0 || addr < 0x60000000 || addr > 0x80000000){
+    if (flags & MAP_FIXED){
+      return FAILED;
+    }
+    new_addr_flag = 1;
+  }
+
+  if (flags & MAP_ANONYMOUS) {
+  }
+  //check free addr space?
   for (int i = 0; i < MAX_WMMAP_INFO; i++) {
     if (myproc()->my_maps->addr[i] != 0 && // Check only initialized entries
         addr >= myproc()->my_maps->addr[i] &&
         addr < myproc()->my_maps->addr[i] + myproc()->my_maps->length[i]) {
-      return FAILED; // Overlap detected
+      if (flags & MAP_FIXED){
+        return FAILED;
+      }
+      new_addr_flag = 1;
+    } else if (i > 0 && myproc()->my_maps->addr[i-1] != 0 && myproc()->my_maps->addr[i] != 0 &&
+              myproc()->my_maps->addr[i-1] + myproc()->my_maps->length[i-1] < addr &&
+              myproc()->my_maps->addr[i] > addr){
+      if (addr + length > myproc()->my_maps->addr[i]){
+        if (flags & MAP_FIXED){
+          return FAILED;
+        }
+        new_addr_flag = 1;
+      }
     }
   }
-  //make sure old mapping doesn't overlap new
- // Find an empty slot for the new mapping
-  for (int i = 0; i < MAX_WMMAP_INFO; i++) {
-    if (myproc()->my_maps->addr[i] == 0) {
-      myproc()->my_maps->addr[i] = addr;
-      myproc()->my_maps->length[i] = length;
-      myproc()->my_maps->total_mmaps++;
-      return addr;
+  if (!new_addr_flag){
+    for (int i = 0; i < MAX_WMMAP_INFO; i++) {
+      if (myproc()->my_maps->addr[i] == 0) {
+        myproc()->my_maps->addr[i] = addr;
+        myproc()->my_maps->length[i] = length;
+        myproc()->my_maps->total_mmaps++;
+        return myproc()->my_maps->addr[i];
+      }
+    }
+  }else if (new_addr_flag){
+    for (int i = 1; i < MAX_WMMAP_INFO; i++) {
+      if (myproc()->my_maps->addr[i] == 0) {
+        myproc()->my_maps->addr[i] = myproc()->my_maps->addr[i-1] + myproc()->my_maps->length[i-1];
+        myproc()->my_maps->length[i] = length;
+        myproc()->my_maps->total_mmaps++;
+        return myproc()->my_maps->addr[i];
+      }
     }
   }
-  return FAILED; // No empty slot found
+ return FAILED; // No empty slot found
 }
 
 int
