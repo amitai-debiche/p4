@@ -168,7 +168,37 @@ sys_wremap(void)
   return 0;
 }
 
-int sys_getpgdirinfo(struct pgdirinfo *pdinfo) {
+int sys_getpgdirinfo(void) {
+  struct pgdirinfo *pdinfo;
+  pde_t *pgdir = myproc()->pgdir; // get the pt for cur proc
   
- return SUCCESS; 
+  if(argptr(0, (char**) &pdinfo, sizeof(*pdinfo)) < 0) { // check arg1
+    return FAILED;
+  }
+  
+  uint curVA = 0;
+  uint curPA = 0;
+  uint n_upages = 0;
+
+  while(curVA < KERNBASE) {
+    pde_t pdindex = PDX(curVA);
+    pte_t ptindex = PTX(curVA);
+    pde_t *pde = &pgdir[pdindex];
+    pte_t *pte = &pde[ptindex];
+    if(*pte & PTE_U) {
+      uint ppn = PTE_ADDR(*pte);
+      curPA = (ppn << PTXSHIFT) | (curVA & (PGSIZE - 1));
+      if(n_upages < 32) {
+	pdinfo->va[n_upages] = curVA;
+	pdinfo->pa[n_upages] = curPA;
+      }
+      n_upages++;
+    }
+
+    curVA = PGROUNDDOWN(curVA + PGSIZE);
+  }
+
+  pdinfo->n_upages = n_upages;
+  return SUCCESS; 
 }
+
