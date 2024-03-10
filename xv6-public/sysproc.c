@@ -128,8 +128,7 @@ sys_wmap(void)
     new_addr_flag = 1;
   }
 
-  if (flags & MAP_ANONYMOUS) {
-  }
+  
   //check free addr space?
   for (int i = 0; i < MAX_WMMAP_INFO; i++) {
     if (myproc()->my_maps->addr[i] != 0 && // Check only initialized entries
@@ -155,6 +154,9 @@ sys_wmap(void)
       if (myproc()->my_maps->addr[i] == 0) {
         myproc()->my_maps->addr[i] = addr;
         myproc()->my_maps->length[i] = length;
+        if (!(flags & MAP_ANONYMOUS)) {
+          myproc()->my_maps->fd[i] = fd;
+        } 
         myproc()->my_maps->total_mmaps++;
         return myproc()->my_maps->addr[i];
       }
@@ -165,6 +167,9 @@ sys_wmap(void)
         myproc()->my_maps->addr[i] = myproc()->my_maps->addr[i-1] + myproc()->my_maps->length[i-1];
         myproc()->my_maps->length[i] = length;
         myproc()->my_maps->total_mmaps++;
+        if (!(flags & MAP_ANONYMOUS)) {
+          myproc()->my_maps->fd[i] = fd;
+        }
         return myproc()->my_maps->addr[i];
       }
     }
@@ -194,9 +199,18 @@ sys_wunmap(void)
           myproc()->my_maps->n_loaded_pages[i]--;
         }
       }
+
+      int fd = myproc()->my_maps->fd[i];
+
+      if (fd >= 0 && fd < NOFILE && myproc()->ofile[fd]){
+        struct file *f = myproc()->ofile[fd];
+        filewrite(f, (char *)addr, myproc()->my_maps->length[i]);
+      }
+
       myproc()->my_maps->total_mmaps--;
       myproc()->my_maps->addr[i] = 0;
       myproc()->my_maps->length[i] = 0; 
+      myproc()->my_maps->fd[i] = -1;
       return SUCCESS;
     }
   }
