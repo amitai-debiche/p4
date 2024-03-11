@@ -245,8 +245,12 @@ sys_wremap(void)
   return FAILED;
 }
 
-int sys_getpgdirinfo(struct pgdirinfo *pdinfo) {
-  
+int
+sys_getpgdirinfo(void) {
+  struct pgdirinfo *pdinfo;
+  pde_t *pgdir = myproc()->pgdir; // get the pt for cur proc
+
+
   if(argptr(0, (char**) &pdinfo, sizeof(*pdinfo)) < 0) { // check arg1
     return FAILED;
   }
