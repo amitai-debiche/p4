@@ -117,6 +117,7 @@ sys_wmap(void)
 
   int new_addr_flag = 0;
 
+
   //I need to sort myproc()->my_maps by addr 
   sort_wmapinfo(myproc()->my_maps);
   
@@ -164,7 +165,7 @@ sys_wmap(void)
   }else if (new_addr_flag){
     for (int i = 1; i < MAX_WMMAP_INFO; i++) {
       if (myproc()->my_maps->addr[i] == 0) {
-        myproc()->my_maps->addr[i] = myproc()->my_maps->addr[i-1] + myproc()->my_maps->length[i-1];
+        myproc()->my_maps->addr[i] = PGROUNDUP(myproc()->my_maps->addr[i-1] + myproc()->my_maps->length[i-1]);
         myproc()->my_maps->length[i] = length;
         myproc()->my_maps->total_mmaps++;
         if (!(flags & MAP_ANONYMOUS)) {
@@ -245,7 +246,38 @@ sys_wremap(void)
 
 int sys_getpgdirinfo(struct pgdirinfo *pdinfo) {
   
- return SUCCESS; 
+  if(argptr(0, (char**) &pdinfo, sizeof(*pdinfo)) < 0) { // check arg1
+    return FAILED;
+  }
+  uint n_upages = 0; // number of user pages
+
+  for(int i = 0; i < NPDENTRIES; i++) {
+    uint va;
+    uint pa;
+    for(int j = 0; j < NPTENTRIES; j++) {
+      va = PGADDR(i, j, 0);
+      pde_t *pde = &pgdir[i];
+      
+      if(*pde & PTE_P) {
+	pde_t *pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
+	pte_t *pte = &pgtab[j];
+      	if(!(*pte & PTE_P)) continue;
+	
+	if(*pte & PTE_U) {
+          pa = (uint)(PTE_ADDR(*pte)); // remove offset then add KERNBASE to it?
+          
+	  if(n_upages < 32) {
+            pdinfo->va[n_upages] = va;
+            pdinfo->pa[n_upages] = pa;
+            n_upages++;
+	  }
+	}
+      }
+    }
+  }
+
+  pdinfo->n_upages = n_upages;
+  return SUCCESS; 
 }
 
 
