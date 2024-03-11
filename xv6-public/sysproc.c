@@ -117,6 +117,7 @@ sys_wmap(void)
 
   int new_addr_flag = 0;
 
+
   //I need to sort myproc()->my_maps by addr 
   sort_wmapinfo(myproc()->my_maps);
   
@@ -164,7 +165,7 @@ sys_wmap(void)
   }else if (new_addr_flag){
     for (int i = 1; i < MAX_WMMAP_INFO; i++) {
       if (myproc()->my_maps->addr[i] == 0) {
-        myproc()->my_maps->addr[i] = myproc()->my_maps->addr[i-1] + myproc()->my_maps->length[i-1];
+        myproc()->my_maps->addr[i] = PGROUNDUP(myproc()->my_maps->addr[i-1] + myproc()->my_maps->length[i-1]);
         myproc()->my_maps->length[i] = length;
         myproc()->my_maps->total_mmaps++;
         if (!(flags & MAP_ANONYMOUS)) {
