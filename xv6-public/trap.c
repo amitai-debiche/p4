@@ -8,6 +8,9 @@
 #include "traps.h"
 #include "spinlock.h"
 #include "wmap.h"
+#include "sleeplock.h"
+#include "fs.h"
+#include "file.h"
 
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
@@ -81,6 +84,7 @@ trap(struct trapframe *tf)
   case T_PGFLT: //T_PGFLT = 14
     uint fault_addr = rcr2();
     int addr_exist = 0;
+    int r;
     for (int i = 0; i < MAX_WMMAP_INFO; i++) {
         if (myproc()->my_maps->addr[i] &&
                 fault_addr >= myproc()->my_maps->addr[i] && 
@@ -91,6 +95,19 @@ trap(struct trapframe *tf)
                 break;
             }
             memset(mem, 0, PGSIZE); // Initialize memory to zero
+                                    
+            if (myproc()->my_maps->fd[i] != -1) {
+                uint offset = (fault_addr - myproc()->my_maps->addr[i]);
+                struct file *f = myproc()->ofile[myproc()->my_maps->fd[i]];
+                ilock(f->ip);
+                if ((r = readi(f->ip, mem, offset, PGSIZE)) < 0){
+                    kfree(mem);
+                    myproc()->killed = 1;    
+                    iunlock(f->ip);
+                    break;
+                }
+                iunlock(f->ip);
+            }
             if (mappages(myproc()->pgdir, (void*)PGROUNDDOWN(fault_addr), PGSIZE, V2P(mem), PTE_W | PTE_U) < 0) {
                 kfree(mem);
                 myproc()->killed = 1;
