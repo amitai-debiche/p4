@@ -96,23 +96,25 @@ trap(struct trapframe *tf)
             }
             memset(mem, 0, PGSIZE); // Initialize memory to zero
                                     
-            if (myproc()->my_maps->fd[i] != -1) {
-                uint offset = (fault_addr - myproc()->my_maps->addr[i]);
-                struct file *f = myproc()->ofile[myproc()->my_maps->fd[i]];
-                ilock(f->ip);
-                if ((r = readi(f->ip, mem, offset, PGSIZE)) < 0){
-                    kfree(mem);
-                    myproc()->killed = 1;    
-                    iunlock(f->ip);
-                    break;
-                }
-                iunlock(f->ip);
-            }
             if (mappages(myproc()->pgdir, (void*)PGROUNDDOWN(fault_addr), PGSIZE, V2P(mem), PTE_W | PTE_U) < 0) {
                 kfree(mem);
                 myproc()->killed = 1;
                 break;
             }
+
+	    if (myproc()->my_maps->fd[i] != -1) {
+                uint offset = (fault_addr - myproc()->my_maps->addr[i]);
+                struct file *f = myproc()->ofile[myproc()->my_maps->fd[i]];
+                ilock(f->ip);
+                if ((r = readi(f->ip, (char *) fault_addr, offset, PGSIZE)) < 0) {
+                    kfree(mem);
+                    myproc()->killed = 1;
+                    iunlock(f->ip);
+                    break;
+                }
+                iunlock(f->ip);
+            }
+
             myproc()->my_maps->n_loaded_pages[i]++;
             addr_exist = 1;
             break;

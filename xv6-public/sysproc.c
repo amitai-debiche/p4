@@ -208,6 +208,7 @@ sys_wunmap(void)
         filewrite(f, (char *)addr, myproc()->my_maps->length[i]);
       }
 
+
       myproc()->my_maps->total_mmaps--;
       myproc()->my_maps->addr[i] = 0;
       myproc()->my_maps->length[i] = 0; 
