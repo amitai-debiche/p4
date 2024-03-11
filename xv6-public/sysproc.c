@@ -235,30 +235,24 @@ int sys_getpgdirinfo(void) {
   if(argptr(0, (char**) &pdinfo, sizeof(*pdinfo)) < 0) { // check arg1
     return FAILED;
   }
-  
-  uint curVA = 0;
-  uint curPA = 0;
-  uint n_upages = 0;
+  uint n_upages = 0; // number of user pages
 
-  while(curVA < KERNBASE) { // brute force through every possible VA on a different page
-    /*
-    pde_t pdindex = PDX(curVA);
-    pte_t ptindex = PTX(curVA);
-    pde_t *pde = &pgdir[pdindex];
-    pte_t *pte = &pde[ptindex];
-    */
-    pte_t *pte = walkpgdir(pgdir, (void *)curVA, 0);
-    if(*pte & PTE_U) { // if it is a user page
-      uint ppn = PTE_ADDR(*pte);
-      curPA = (ppn << PTXSHIFT) | (curVA & (PGSIZE - 1));
-      if(n_upages < 32) {
-	pdinfo->va[n_upages] = curVA;
-	pdinfo->pa[n_upages] = curPA;
-	n_upages++;
+  for(int i = 0; i < NPDENTRIES; i++) {
+    uint va;
+    uint pa;
+    for(int j = 0; j < NPTENTRIES; j++) {
+      va = PGADDR(i, j, 0);
+      pte_t *pte = walkpgdir(pgdir, (void *) va, 0);
+      if(*pte & PTE_U & PTE_P) {
+	pte_t *pttab = &pte[PTX(va)]; // pttab includes ppn and offset
+	pa = (uint)P2V(PTE_ADDR(*pttab)); // remove offset then add KERNBASE to it
+	if(n_upages < 32) {
+          pdinfo->va[n_upages] = va;
+          pdinfo->pa[n_upages] = pa;
+          n_upages++;   
+	}
       }
     }
-
-    curVA = PGROUNDDOWN(curVA + PGSIZE);
   }
 
   pdinfo->n_upages = n_upages;
