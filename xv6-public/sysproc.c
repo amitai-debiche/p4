@@ -186,7 +186,7 @@ sys_wunmap(void)
   if (argint(0, (int*)&addr) < 0) {
     return FAILED;
   }
-
+  //TLB flush
   for (int i = 0; i < MAX_WMMAP_INFO; i++) {
     if (addr == myproc()->my_maps->addr[i]) {
       uint n_pages = (myproc()->my_maps->length[i] + PGSIZE - 1) / PGSIZE;
@@ -195,8 +195,9 @@ sys_wunmap(void)
         if (pte && (*pte & PTE_P)) {
           uint pa = PTE_ADDR(*pte);
           if (pa != 0) 
-              kfree(P2V(pa));
+            kfree(P2V(pa));
           *pte = 0;
+          switchuvm(myproc()); //FLUSH THE TLB fixes our issue
           myproc()->my_maps->n_loaded_pages[i]--;
         }
       }
@@ -244,9 +245,7 @@ sys_wremap(void)
   return FAILED;
 }
 
-int sys_getpgdirinfo(void) {
-  struct pgdirinfo *pdinfo;
-  pde_t *pgdir = myproc()->pgdir; // get the pt for cur proc
+int sys_getpgdirinfo(struct pgdirinfo *pdinfo) {
   
   if(argptr(0, (char**) &pdinfo, sizeof(*pdinfo)) < 0) { // check arg1
     return FAILED;
@@ -281,6 +280,7 @@ int sys_getpgdirinfo(void) {
   pdinfo->n_upages = n_upages;
   return SUCCESS; 
 }
+
 
 int
 sys_getwmapinfo(void)
