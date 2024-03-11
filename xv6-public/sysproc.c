@@ -185,7 +185,7 @@ sys_wunmap(void)
   if (argint(0, (int*)&addr) < 0) {
     return FAILED;
   }
-
+  //TLB flush
   for (int i = 0; i < MAX_WMMAP_INFO; i++) {
     if (addr == myproc()->my_maps->addr[i]) {
       uint n_pages = (myproc()->my_maps->length[i] + PGSIZE - 1) / PGSIZE;
@@ -194,8 +194,9 @@ sys_wunmap(void)
         if (pte && (*pte & PTE_P)) {
           uint pa = PTE_ADDR(*pte);
           if (pa != 0) 
-              kfree(P2V(pa));
+            kfree(P2V(pa));
           *pte = 0;
+          switchuvm(myproc()); //FLUSH THE TLB fixes our issue
           myproc()->my_maps->n_loaded_pages[i]--;
         }
       }
@@ -242,42 +243,11 @@ sys_wremap(void)
   return FAILED;
 }
 
-int sys_getpgdirinfo(void) {
-  struct pgdirinfo *pdinfo;
-  pde_t *pgdir = myproc()->pgdir; // get the pt for cur proc
+int sys_getpgdirinfo(struct pgdirinfo *pdinfo) {
   
-  if(argptr(0, (char**) &pdinfo, sizeof(*pdinfo)) < 0) { // check arg1
-    return FAILED;
-  }
-  
-  uint curVA = 0;
-  uint curPA = 0;
-  uint n_upages = 0;
-
-  while(curVA < KERNBASE) { // brute force through every possible VA on a different page
-    /*
-    pde_t pdindex = PDX(curVA);
-    pte_t ptindex = PTX(curVA);
-    pde_t *pde = &pgdir[pdindex];
-    pte_t *pte = &pde[ptindex];
-    */
-    pte_t *pte = walkpgdir(pgdir, (void *)curVA, 0);
-    if(*pte & PTE_U) { // if it is a user page
-      uint ppn = PTE_ADDR(*pte);
-      curPA = (ppn << PTXSHIFT) | (curVA & (PGSIZE - 1));
-      if(n_upages < 32) {
-	pdinfo->va[n_upages] = curVA;
-	pdinfo->pa[n_upages] = curPA;
-	n_upages++;
-      }
-    }
-
-    curVA = PGROUNDDOWN(curVA + PGSIZE);
-  }
-
-  pdinfo->n_upages = n_upages;
-  return SUCCESS; 
+ return SUCCESS; 
 }
+
 
 int
 sys_getwmapinfo(void)
