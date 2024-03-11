@@ -27,6 +27,11 @@ int main() {
 
     printf(1, "Memory mapped successfully at address: %x\n", address);
 
+    printf(1, "n_upages: %d\n", testpgdir.n_upages);
+    for(int i = 0; i < ((testpgdir.n_upages > 32) ? 32 : testpgdir.n_upages); i++) {
+        printf(1, "va: %p   pa: %p\n", testpgdir.va[i], testpgdir.pa[i]);
+    }
+
     // Access the mapped memory region
     *(int *)(address + 1) = 234;
     *(int *)(address + 2) = 1203981;

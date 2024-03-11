@@ -256,14 +256,21 @@ int sys_getpgdirinfo(void) {
     uint pa;
     for(int j = 0; j < NPTENTRIES; j++) {
       va = PGADDR(i, j, 0);
-      pte_t *pte = walkpgdir(pgdir, (void *) va, 0);
-      if(*pte & PTE_U & PTE_P) {
-	pte_t *pttab = &pte[PTX(va)]; // pttab includes ppn and offset
-	pa = (uint)P2V(PTE_ADDR(*pttab)); // remove offset then add KERNBASE to it
-	if(n_upages < 32) {
-          pdinfo->va[n_upages] = va;
-          pdinfo->pa[n_upages] = pa;
-          n_upages++;   
+      pde_t *pde = &pgdir[i];
+      
+      if(*pde & PTE_P) {
+	pde_t *pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
+	pte_t *pte = &pgtab[j];
+      	if(!(*pte & PTE_P)) continue;
+	
+	if(*pte & PTE_U) {
+          pa = (uint)(PTE_ADDR(*pte)); // remove offset then add KERNBASE to it?
+          
+	  if(n_upages < 32) {
+            pdinfo->va[n_upages] = va;
+            pdinfo->pa[n_upages] = pa;
+            n_upages++;
+	  }
 	}
       }
     }
