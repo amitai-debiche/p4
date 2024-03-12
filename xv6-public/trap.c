@@ -101,7 +101,6 @@ trap(struct trapframe *tf)
                 myproc()->killed = 1;
                 break;
             }
-
 	    if (myproc()->my_maps->fd[i] != -1) {
                 uint offset = (fault_addr - myproc()->my_maps->addr[i]);
                 struct file *f = myproc()->ofile[myproc()->my_maps->fd[i]];
@@ -120,6 +119,7 @@ trap(struct trapframe *tf)
             break;
         }
     }
+    
     if (!addr_exist) {
         cprintf("Segmentation Fault\n");
         myproc()->killed = 1;

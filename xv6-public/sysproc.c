@@ -116,14 +116,13 @@ sys_wmap(void)
   }
 
   int new_addr_flag = 0;
-  
 
   //I need to sort myproc()->my_maps by addr 
   sort_wmapinfo(myproc()->my_maps);
   
   //if MAP_FIXED make sure specified address space is available
   if (addr % PGSIZE != 0 || addr < 0x60000000 || addr > 0x80000000) { 
-    if (flags & MAP_FIXED){
+    if (flags & MAP_FIXED) {
       return FAILED;
     }
     new_addr_flag = 1;
@@ -160,6 +159,8 @@ sys_wmap(void)
         myproc()->my_maps->total_mmaps++;
 	if(flags & MAP_PRIVATE) {
 	  myproc()->my_maps->flagPrivate[i] = 1;
+	} else {
+	  myproc()->my_maps->flagPrivate[i] = 0;
 	}
         return myproc()->my_maps->addr[i];
       }
@@ -175,6 +176,8 @@ sys_wmap(void)
         }
 	if(flags & MAP_PRIVATE) {
           myproc()->my_maps->flagPrivate[i] = 1;
+        } else {
+          myproc()->my_maps->flagPrivate[i] = 0;
         }
         return myproc()->my_maps->addr[i];
       }
@@ -199,7 +202,7 @@ sys_wunmap(void)
 	pte_t *pte = walkpgdir(myproc()->pgdir, (void*)(addr + j * PGSIZE), 0);
 	if (pte && (*pte & PTE_P)) {
 	  uint pa = PTE_ADDR(*pte);
-          if (pa != 0) 
+          if (pa != 0 && myproc()->parent->pid == 2) // if pa is not null
             kfree(P2V(pa));
           *pte = 0;
           switchuvm(myproc()); //FLUSH THE TLB fixes our issue

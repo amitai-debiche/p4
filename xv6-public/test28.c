@@ -6,18 +6,17 @@
 
 #include "wmap.h"
 
-
 // ====================================================================
-// Test 25
-// Summary: Validates parent can see child's change for anonymous shared mappings with fork
+// Test 28
+// Summary: Validates child unmapping a shared anon map does not affect the parent
 //
-// Checks whether the parent process sees the child's modification
-// Does not unmap the mapping
+// Checks whether the child process sees old contents of the mapping
+// Checks whether the parent process sees the old contents of the mapping after child unmaps
 // Does not check for deallocation of pages
 // Does not check for lazy allocation of pages
 // ====================================================================
 
-char *test_name = "TEST_25";
+char *test_name = "TEST_28";
 
 // TEST HELPER
 #define MMAPBASE 0x60000000
@@ -84,27 +83,28 @@ int main() {
         printf(1, "Cause: expected 0x%x, but got 0x%x\n", addr, map);
         failed();
     }
+    printf(1, "Map 1 created at 0x%x with length %d. \tOkay\n", map, len);
 
     //
-    // 2. write some data to all the pages of the mapping
+    // 2. write some data to all pages of the mapping
     //
     char val = 'a';
     char *arr = (char *)map;
     for (int i = 0; i < len; i++) {
         arr[i] = val;
     }
+    printf(1, "Wrote '%c' all pages of Map 1. \tOkay\n", val);
 
-    int newval = 'x';
     int pid = fork();
     if (pid == 0) {
         // validate initial state
         struct wmapinfo winfo2;
         get_n_validate_wmap_info(&winfo2, 1);
         map_exists(&winfo2, map, len, TRUE);
-        printf(1, "Child process sees Map 1. \tOkay\n");
+        printf(1, "Child sees Map 1. \tOkay\n");
 
         //
-        // 3. the child process should see the same data as the parent in Map 1
+        // 3. the child process validates the data in Map 1
         //
         char *arr3 = (char *)map;
         for (int i = 0; i < len; i++) {
@@ -113,47 +113,44 @@ int main() {
                 failed();
             }
         }
-        printf(1, "Child sees the same data as the parent in Map 1. \tOkay\n");
+        printf(1, "Child sees '%c' in Map 1. \tOkay\n", val);
 
-        //
-        // 4. modify the data in Map 1 (should not affect the parent)
-        //
-        for (int i = 0; i < len; i++) {
-            arr3[i] = newval;
+        // unmap the mapping
+        int ret = wunmap(map);
+        if (ret < 0) {
+            printf(1, "Cause: `wunmap()` returned %d\n", ret);
+            failed();
         }
-
-	printf(1, "Child process\n");
-	struct pgdirinfo *pdinfo = 0;
-	getpgdirinfo(pdinfo);
-	printf(1, "n_upages: %d\n", pdinfo->n_upages);
-	for(int i = 0; i < pdinfo->n_upages; i++) {
-		printf(1, "va: %d\tpa:%d\n", pdinfo->va[i], pdinfo->pa[i]);
-	}
+        // validate the mapping is removed
+        struct wmapinfo winfo3;
+        get_n_validate_wmap_info(&winfo3, 0);
+        map_exists(&winfo3, map, len, FALSE);
+        printf(1, "Child unmapped Map 1. \tOkay\n");
 
         // child process exits
         exit();
     } else {
+
         // parent process waits for the child to exit
-        printf(1, "Parent waits for the child to exit\n");
         wait();
+
         // validate initial state
         struct wmapinfo winfo2;
         get_n_validate_wmap_info(&winfo2, 1);
         map_exists(&winfo2, map, len, TRUE);
-        printf(1, "Parent process sees Map 1. \tOkay\n");
-        
-	//printf(1, "\n", map);
+        printf(1, "Parent sees Map 1. \tOkay\n");
+
         //
         // 5. the parent process should see the old data in Map 1
         //
         char *arr = (char *)map;
         for (int i = 0; i < len; i++) {
-            if (arr[i] != newval) {
-                printf(1, "Cause: Parent sees %d at Map 1, but expected %d\n", arr[i], newval);
+            if (arr[i] != val) {
+                printf(1, "Cause: Parent sees %d at Map 1, but expected %d\n", arr[i], val);
                 failed();
             }
         }
-        printf(1, "Parent sees the new data in Map 1. \tOkay\n");
+        printf(1, "Parent sees '%c' in Map 1. \tOkay\n", val);
 
         // parent process exits
         success();

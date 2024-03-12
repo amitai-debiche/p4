@@ -287,7 +287,8 @@ freevm(pde_t *pgdir)
 
   if(pgdir == 0)
     panic("freevm: no pgdir");
-  deallocuvm(pgdir, 0x60000000, 0);
+  deallocuvm(pgdir, 0x60000000, 0); // so that freevm doesn't deallocs 6000-8000
+  // deallocuvm(pgdir, KERNBASE, 0); original code
   for(i = 0; i < NPDENTRIES; i++){
     if(pgdir[i] & PTE_P){
       char * v = P2V(PTE_ADDR(pgdir[i]));
