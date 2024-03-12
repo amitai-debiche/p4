@@ -134,6 +134,7 @@ int main() {
     }*/
 
     // unmap the map
+    printf(1, "right before wunmap\n");
     int ret = wunmap(map);
     if (ret < 0) {
         printf(1, "Cause: `wunmap()` returned %d\n", ret);

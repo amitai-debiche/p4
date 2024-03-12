@@ -184,6 +184,8 @@ UPROGS=\
 	_test1\
 	_test2\
 	_test16\
+	_test22\
+	_test25\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

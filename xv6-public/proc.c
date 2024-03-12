@@ -208,11 +208,54 @@ fork(void)
   }
 
   // Copy process state from proc.
-  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
+  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0) {
     kfree(np->kstack);
     np->kstack = 0;
     np->state = UNUSED;
     return -1;
+  }
+  
+  // Copy mapping infos
+  np->my_maps->total_mmaps = curproc->my_maps->total_mmaps;
+  for(int i = 0; i < 16; i++) {
+    np->my_maps->addr[i] = curproc->my_maps->addr[i];
+    np->my_maps->length[i] = curproc->my_maps->length[i];
+    np->my_maps->n_loaded_pages[i] = curproc->my_maps->n_loaded_pages[i];
+    np->my_maps->flagPrivate[i] = curproc->my_maps->flagPrivate[i];
+
+    if(curproc->my_maps->flagPrivate[i]) { // if this mapping is private
+      for(int j = 0; j < curproc->my_maps->length[i]; j += PGSIZE) { // iterate through every page in the mapping
+	uint addr = curproc->my_maps->addr[i] + j;
+	pte_t *pte = walkpgdir(curproc->pgdir, (void *)(addr), 0);
+	if(pte) { // present PTE
+	  if(!(*pte & PTE_P)) continue; // continue if not present
+	  if(*pte & PTE_U) { // if user page
+	    uint ppn = PTE_ADDR(*pte);
+            char *mem = kalloc();
+	    if (!mem) continue;
+	    if (mappages(np->pgdir, (void*)PGROUNDDOWN(addr), PGSIZE, V2P(mem), PTE_W | PTE_U) < 0) {
+                kfree(mem);
+            	continue;
+	    }
+	    memmove((void*)mem, (void*)(P2V(ppn)), PGSIZE);
+	  }
+	}
+      }
+    } else { // find physical address in parent and map it to the child process
+      for(int j = 0; j < curproc->my_maps->length[i]; j += PGSIZE) { // iterate through every page in the mapping
+        uint addr = curproc->my_maps->addr[i] + j;
+        pte_t *pte = walkpgdir(curproc->pgdir, (void *)(addr), 0);
+        if(pte) { // PTE is not zero
+          if(!(*pte & PTE_P)) continue; // continue if not present
+          if(*pte & PTE_U) { // if user page
+            uint ppn = PTE_ADDR(*pte);
+            if (mappages(np->pgdir, (void*)PGROUNDDOWN(addr), PGSIZE, V2P(ppn), PTE_W | PTE_U) < 0) {
+                continue;
+            }
+          }
+        }
+      }
+    }
   }
   np->sz = curproc->sz;
   np->parent = curproc;
@@ -261,9 +304,40 @@ exit(void)
   }
   
   //this will need to be modified
-  if (curproc->my_maps != 0) {
-    kfree((char*)curproc->my_maps);
-    curproc->my_maps = 0;
+  if(curproc->parent->pid == 2) { // parent process since shell pid = 2
+    for(int i = 0; i < 16; i++) {
+      for(int j = 0; j < curproc->my_maps->length[i]; j += PGSIZE) { // iterate through every page in the mapping
+        uint addr = curproc->my_maps->addr[i] + j;
+        pte_t *pte = walkpgdir(curproc->pgdir, (void *)(addr), 0);
+        if(pte) { // present PTE
+          if(!(*pte & PTE_P)) continue; // continue if not present
+          if(*pte & PTE_U) { // if user page
+            uint pa = PTE_ADDR(*pte);
+	    kfree(P2V(pa));
+	    *pte = 0;
+            continue;
+          }
+        }
+      }
+    }
+  } else { // child process
+     for(int i = 0; i < 16; i++) {
+       if(curproc->my_maps->flagPrivate[i]) { // private then free
+         for(int j = 0; j < curproc->my_maps->length[i]; j += PGSIZE) { // iterate through every page in the mapping
+          uint addr = curproc->my_maps->addr[i] + j;
+          pte_t *pte = walkpgdir(curproc->pgdir, (void *)(addr), 0);
+          if(pte) { // present PTE
+            if(!(*pte & PTE_P)) continue; // continue if not present
+            if(*pte & PTE_U) { // if user page
+              uint pa = PTE_ADDR(*pte);
+              kfree(P2V(pa));
+              *pte = 0;
+              continue;
+            }
+          }
+        }
+       } 
+     }
   }
 
   begin_op();
@@ -576,6 +650,11 @@ void sort_wmapinfo(struct wmapinfo *info) {
                 temp = info->n_loaded_pages[j];
                 info->n_loaded_pages[j] = info->n_loaded_pages[j + 1];
                 info->n_loaded_pages[j + 1] = temp;
+
+		// Swap flagPrivate
+		temp = info->flagPrivate[j];
+		info->flagPrivate[j] = info->flagPrivate[j + 1];
+		info->flagPrivate[j + 1] = temp;
             }
         }
     }

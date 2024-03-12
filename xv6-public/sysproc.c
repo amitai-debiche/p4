@@ -116,19 +116,18 @@ sys_wmap(void)
   }
 
   int new_addr_flag = 0;
-
+  
 
   //I need to sort myproc()->my_maps by addr 
   sort_wmapinfo(myproc()->my_maps);
   
   //if MAP_FIXED make sure specified address space is available
-  if (addr % PGSIZE != 0 || addr < 0x60000000 || addr > 0x80000000){
+  if (addr % PGSIZE != 0 || addr < 0x60000000 || addr > 0x80000000) { 
     if (flags & MAP_FIXED){
       return FAILED;
     }
     new_addr_flag = 1;
   }
-
   
   //check free addr space?
   for (int i = 0; i < MAX_WMMAP_INFO; i++) {
@@ -159,6 +158,9 @@ sys_wmap(void)
           myproc()->my_maps->fd[i] = fd;
         } 
         myproc()->my_maps->total_mmaps++;
+	if(flags & MAP_PRIVATE) {
+	  myproc()->my_maps->flagPrivate[i] = 1;
+	}
         return myproc()->my_maps->addr[i];
       }
     }
@@ -170,6 +172,9 @@ sys_wmap(void)
         myproc()->my_maps->total_mmaps++;
         if (!(flags & MAP_ANONYMOUS)) {
           myproc()->my_maps->fd[i] = fd;
+        }
+	if(flags & MAP_PRIVATE) {
+          myproc()->my_maps->flagPrivate[i] = 1;
         }
         return myproc()->my_maps->addr[i];
       }
@@ -191,9 +196,9 @@ sys_wunmap(void)
     if (addr == myproc()->my_maps->addr[i]) {
       uint n_pages = (myproc()->my_maps->length[i] + PGSIZE - 1) / PGSIZE;
       for (int j = 0; j < n_pages; j++) {
-        pte_t *pte = walkpgdir(myproc()->pgdir, (void*)(addr + j * PGSIZE), 0);
-        if (pte && (*pte & PTE_P)) {
-          uint pa = PTE_ADDR(*pte);
+	pte_t *pte = walkpgdir(myproc()->pgdir, (void*)(addr + j * PGSIZE), 0);
+	if (pte && (*pte & PTE_P)) {
+	  uint pa = PTE_ADDR(*pte);
           if (pa != 0) 
             kfree(P2V(pa));
           *pte = 0;
@@ -204,20 +209,22 @@ sys_wunmap(void)
 
       int fd = myproc()->my_maps->fd[i];
 
-      if (fd >= 0 && fd < NOFILE && myproc()->ofile[fd]){
-        struct file *f = myproc()->ofile[fd];
-        filewrite(f, (char *)addr, myproc()->my_maps->length[i]);
+      if (fd >= 0 && fd < NOFILE && myproc()->ofile[fd]) {
+	struct file *f = myproc()->ofile[fd];
+	filewrite(f, (char *)addr, myproc()->my_maps->length[i]);
+        // Helper function for filewrite which isn't working
+	//writei(f->ip, (char *)myproc()->my_maps->addr[i], 0, myproc()->my_maps->length[i]);
       }
-
+      
 
       myproc()->my_maps->total_mmaps--;
       myproc()->my_maps->addr[i] = 0;
       myproc()->my_maps->length[i] = 0; 
       myproc()->my_maps->fd[i] = -1;
+      myproc()->my_maps->flagPrivate[i] = 0;
       return SUCCESS;
     }
   }
-  
   return FAILED; // Address not found
 }
 
@@ -298,7 +305,7 @@ sys_getwmapinfo(void)
   if (copyout(myproc()->pgdir, (uint)wminfo->addr, myproc()->my_maps->addr, sizeof(myproc()->my_maps->addr)) < 0 ||
       copyout(myproc()->pgdir, (uint)wminfo->length, myproc()->my_maps->length, sizeof(myproc()->my_maps->length)) < 0 ||
       copyout(myproc()->pgdir, (uint)wminfo->n_loaded_pages, myproc()->my_maps->n_loaded_pages, sizeof(myproc()->my_maps->n_loaded_pages)) < 0 ||
-      copyout(myproc()->pgdir, (uint)&(wminfo->total_mmaps), &(myproc()->my_maps->total_mmaps), sizeof(myproc()->my_maps->total_mmaps)) < 0) {
+      copyout(myproc()->pgdir, (uint)&(wminfo->total_mmaps), &(myproc()->my_maps->total_mmaps), sizeof(myproc()->my_maps->total_mmaps)) < 0 || copyout(myproc()->pgdir, (uint)wminfo->flagPrivate, myproc()->my_maps->flagPrivate, sizeof(myproc()->my_maps->flagPrivate) < 0)) {
         return -1;
   }
   return SUCCESS;
