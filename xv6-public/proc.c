@@ -657,6 +657,15 @@ void sort_wmapinfo(struct wmapinfo *info) {
 		temp = info->flagPrivate[j];
 		info->flagPrivate[j] = info->flagPrivate[j + 1];
 		info->flagPrivate[j + 1] = temp;
+
+                temp = info->fd[j];
+                info->fd[j] = info->fd[j + 1];
+                info->fd[j+1] = temp;
+                
+                temp = info->write[j];
+                info->write[j] = info->write[j + 1];
+                info->write[j+1] = temp;
+
             }
         }
     }

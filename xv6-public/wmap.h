@@ -27,5 +27,6 @@ struct wmapinfo {
     int n_loaded_pages[MAX_WMMAP_INFO]; // Number of pages physically loaded into memory
     int fd[MAX_WMMAP_INFO];             // File descriptor for mapping (if necessary)
     int flagPrivate[MAX_WMMAP_INFO];    // 1 if private, 0 if shareable
+    int write[MAX_WMMAP_INFO];          // if file has been written to
 };
 
