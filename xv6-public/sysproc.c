@@ -7,6 +7,10 @@
 #include "mmu.h"
 #include "proc.h"
 #include "wmap.h"
+#include "spinlock.h"
+#include "sleeplock.h"
+#include "fs.h"
+#include "file.h"
 
 int
 sys_fork(void)
@@ -196,12 +200,24 @@ sys_wunmap(void)
   }
   //TLB flush
   for (int i = 0; i < MAX_WMMAP_INFO; i++) {
+
+    int fd = myproc()->my_maps->fd[i];
+    if (myproc()->my_maps->write[i] == 1 && fd >= 0 && fd < NOFILE && myproc()->ofile[fd]) {
+      struct file *f = myproc()->ofile[fd];
+      f->off = 0;
+      begin_op();
+      ilock(f->ip);
+      writei(f->ip, (char *)addr, f->off, PGSIZE);
+      iunlock(f->ip);
+      end_op();
+    }
+
     if (addr == myproc()->my_maps->addr[i]) {
       uint n_pages = (myproc()->my_maps->length[i] + PGSIZE - 1) / PGSIZE;
       for (int j = 0; j < n_pages; j++) {
-	pte_t *pte = walkpgdir(myproc()->pgdir, (void*)(addr + j * PGSIZE), 0);
-	if (pte && (*pte & PTE_P)) {
-	  uint pa = PTE_ADDR(*pte);
+        pte_t *pte = walkpgdir(myproc()->pgdir, (void*)(addr + j * PGSIZE), 0);
+        if (pte && (*pte & PTE_P)) {
+          uint pa = PTE_ADDR(*pte);
           if (pa != 0 && myproc()->parent->pid == 2) // if pa is not null
             kfree(P2V(pa));
           *pte = 0;
@@ -210,16 +226,7 @@ sys_wunmap(void)
         }
       }
 
-      int fd = myproc()->my_maps->fd[i];
-
-      if (fd >= 0 && fd < NOFILE && myproc()->ofile[fd]) {
-	struct file *f = myproc()->ofile[fd];
-	filewrite(f, (char *)addr, myproc()->my_maps->length[i]);
-        // Helper function for filewrite which isn't working
-	//writei(f->ip, (char *)myproc()->my_maps->addr[i], 0, myproc()->my_maps->length[i]);
-      }
-      
-
+      myproc()->my_maps->write[i] = 0;
       myproc()->my_maps->total_mmaps--;
       myproc()->my_maps->addr[i] = 0;
       myproc()->my_maps->length[i] = 0; 

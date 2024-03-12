@@ -113,7 +113,7 @@ trap(struct trapframe *tf)
                 }
                 iunlock(f->ip);
             }
-
+            myproc()->my_maps->write[i] = 1;
             myproc()->my_maps->n_loaded_pages[i]++;
             addr_exist = 1;
             break;
