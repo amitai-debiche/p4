@@ -201,18 +201,22 @@ sys_wunmap(void)
   //TLB flush
   for (int i = 0; i < MAX_WMMAP_INFO; i++) {
 
-    int fd = myproc()->my_maps->fd[i];
-    if (myproc()->my_maps->write[i] == 1 && fd >= 0 && fd < NOFILE && myproc()->ofile[fd]) {
-      struct file *f = myproc()->ofile[fd];
-      f->off = 0;
-      begin_op();
-      ilock(f->ip);
-      writei(f->ip, (char *)addr, f->off, PGSIZE);
-      iunlock(f->ip);
-      end_op();
-    }
-
     if (addr == myproc()->my_maps->addr[i]) {
+      int fd = myproc()->my_maps->fd[i];
+      if (myproc()->my_maps->flagPrivate[i] == 0 && myproc()->my_maps->write[i] == 1 && fd >= 0 && fd < NOFILE && myproc()->ofile[fd]) {
+        struct file *f = myproc()->ofile[fd];
+        f->off = 0;
+        int r;
+        int num_pages = PGROUNDDOWN(myproc()->my_maps->length[i]) / 4096;
+        for (int k = 0; k < num_pages; k++) {
+          begin_op();
+          ilock(f->ip);
+          if ((r = writei(f->ip, (char *)addr + i, f->off, PGSIZE)) > 0)
+            f->off +=r;
+          iunlock(f->ip);
+          end_op();
+        }
+      }
       uint n_pages = (myproc()->my_maps->length[i] + PGSIZE - 1) / PGSIZE;
       for (int j = 0; j < n_pages; j++) {
         pte_t *pte = walkpgdir(myproc()->pgdir, (void*)(addr + j * PGSIZE), 0);
@@ -225,7 +229,6 @@ sys_wunmap(void)
           myproc()->my_maps->n_loaded_pages[i]--;
         }
       }
-
       myproc()->my_maps->write[i] = 0;
       myproc()->my_maps->total_mmaps--;
       myproc()->my_maps->addr[i] = 0;

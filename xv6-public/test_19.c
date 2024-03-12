@@ -27,7 +27,7 @@ char *test_name = "TEST_19";
 
 void success() {
     printf(1, "\nWMMAP\t SUCCESS\n\n");
-    exit();
+    //exit();
 }
 
 void failed() {
@@ -83,7 +83,7 @@ int create_small_file(char *filename) {
     return bufflen;
 }
 
-int main() {
+int test_19() {
     printf(1, "\n\n%s\n", test_name);
 
     // validate initial state
@@ -178,4 +178,11 @@ int main() {
 
     // test ends
     success();
+    return 1;
+}
+int main() {
+    test_19();
+    test_19();
+    test_19();
+    exit();
 }
