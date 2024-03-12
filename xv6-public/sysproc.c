@@ -208,7 +208,6 @@ sys_wunmap(void)
 
           begin_op();
           ilock(f->ip);
-          cprintf("before writei\n");
           if ((r = writei(f->ip, (char *)addr + i, f->off, n1)) > 0)
             f->off += r;
           iunlock(f->ip);
