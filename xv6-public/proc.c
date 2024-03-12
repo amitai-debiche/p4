@@ -576,6 +576,15 @@ void sort_wmapinfo(struct wmapinfo *info) {
                 temp = info->n_loaded_pages[j];
                 info->n_loaded_pages[j] = info->n_loaded_pages[j + 1];
                 info->n_loaded_pages[j + 1] = temp;
+
+                temp = info->fd[j];
+                info->fd[j] = info->fd[j + 1];
+                info->fd[j+1] = temp;
+                
+                temp = info->write[j];
+                info->write[j] = info->write[j + 1];
+                info->write[j+1] = temp;
+
             }
         }
     }
