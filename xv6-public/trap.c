@@ -102,11 +102,10 @@ trap(struct trapframe *tf)
                 break;
             }
 	    if (myproc()->my_maps->fd[i] != -1) {
-   //             uint offset = (fault_addr - myproc()->my_maps->addr[i]);
+                uint offset = (fault_addr - myproc()->my_maps->addr[i]);
                 struct file *f = myproc()->ofile[myproc()->my_maps->fd[i]];
                 ilock(f->ip);
-                if ((r = readi(f->ip, (char *) fault_addr, f->off, PGSIZE)) > 0) {
-                    f->off += r;
+                if ((r = readi(f->ip, (char *) fault_addr, offset, PGSIZE)) > 0) {
                 }
                 iunlock(f->ip);
             }

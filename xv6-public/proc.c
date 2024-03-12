@@ -107,6 +107,7 @@ found:
     p->my_maps->length[i] = 0;
     p->my_maps->n_loaded_pages[i] = 0;
     p->my_maps->fd[i] = -1;
+    p->my_maps->write[i] = 0;
   }
 
   // Allocate kernel stack.

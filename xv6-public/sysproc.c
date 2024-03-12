@@ -205,27 +205,28 @@ sys_wunmap(void)
 
       if (myproc()->my_maps->write[i] == 1 && fd >= 0 && fd < NOFILE && myproc()->ofile[fd]){
         struct file *f = myproc()->ofile[fd];
-        int max = ((MAXOPBLOCKS-1-1-2) / 2) * 512;
-        int i = 0;
+        //int max = ((MAXOPBLOCKS-1-1-2) / 2) * 512;
+        //int i = 0;
         int r;
         f->off = 0;
-        while(i < myproc()->my_maps->length[i]){
-          int n1 = myproc()->my_maps->length[i] - i;
-          if(n1 > max)
-            n1 = max;
+        //testing something
+        //while(i < myproc()->my_maps->length[i]){
+         // int n1 = myproc()->my_maps->length[i] - i;
+          //if(n1 > max)
+           // n1 = max;
 
           begin_op();
           ilock(f->ip);
-          if ((r = writei(f->ip, (char *)addr + i, f->off, n1)) > 0)
+          if ((r = writei(f->ip, (char *)addr + PGSIZE, f->off, PGSIZE)) > 0)
             f->off += r;
           iunlock(f->ip);
           end_op();
-          if(r < 0)
-            break;
-          if(r != n1)
-            panic("short filewrite");
-          i += r;
-        }
+          //if(r < 0)
+           // break;
+          //if(r != n1)
+            //panic("short filewrite");
+          //i += r;
+        //}
       }
       uint n_pages = (myproc()->my_maps->length[i] + PGSIZE - 1) / PGSIZE;
       for (int j = 0; j < n_pages; j++) {
@@ -238,15 +239,6 @@ sys_wunmap(void)
           switchuvm(myproc()); //FLUSH THE TLB fixes our issue
           myproc()->my_maps->n_loaded_pages[i]--;
         }
-      }
-
-
-
-      if (fd >= 0 && fd < NOFILE && myproc()->ofile[fd]) {
-	struct file *f = myproc()->ofile[fd];
-	filewrite(f, (char *)addr, myproc()->my_maps->length[i]);
-        // Helper function for filewrite which isn't working
-	//writei(f->ip, (char *)myproc()->my_maps->addr[i], 0, myproc()->my_maps->length[i]);
       }
       
 
