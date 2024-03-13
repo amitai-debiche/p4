@@ -636,9 +636,9 @@ procdump(void)
 
 void sort_wmapinfo(struct wmapinfo *info) {
     int i, j, temp;
-    for (i = 0; i < info->total_mmaps - 1; i++) {
-        for (j = 0; j < info->total_mmaps - i - 1; j++) {
-            if (info->addr[j] > info->addr[j + 1]) {
+    for (i = 0; i < 16 - 1; i++) {
+        for (j = 0; j < 16 - i - 1; j++) {
+            if (info->addr[j] == 0 || (info->addr[j] > info->addr[j + 1] && info->addr[j + 1] != 0)) {
                 // Swap addr
                 temp = info->addr[j];
                 info->addr[j] = info->addr[j + 1];

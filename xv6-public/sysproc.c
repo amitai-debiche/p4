@@ -264,7 +264,7 @@ sys_wunmap(void)
   return FAILED; // Address not found
 }
 
-//IMPLEMENT THIS LAST
+// flags = 0 or MREMAP_MAYMOVE
 int
 sys_wremap(void)
 {
@@ -281,8 +281,138 @@ sys_wremap(void)
     return FAILED;
   }
 
-  for (int i = 0; i < MAX_WMMAP_INFO; i++){
-    if (old_addr == myproc()->my_maps->addr[i] && old_size == myproc()->my_maps->addr[i]) {
+  sort_wmapinfo(myproc()->my_maps); // sort in ascending order, zero at the end of the map
+
+  for (int i = 0; i < MAX_WMMAP_INFO; i++) {
+    if (old_addr == myproc()->my_maps->addr[i] && old_size == myproc()->my_maps->length[i]) {
+      if (new_size <= old_size) { // shrinking will stay in the same place
+        for(int j = 0; j < PGROUNDDOWN(old_size - new_size); j += PGSIZE) {
+	  // might need to add FD here? I am not sure
+	  uint addr = PGROUNDUP(old_addr + new_size) + j;
+	  pte_t *pte = walkpgdir(myproc()->pgdir, (void*)addr, 0);
+	  if(pte && (*pte & PTE_P)) {
+	    uint pa = PTE_ADDR(*pte);
+
+	    if (pa != 0 && myproc()->parent->pid != 2) {
+	      kfree(P2V(pa));
+	    }
+	    *pte = 0;
+	    switchuvm(myproc());
+	  }
+	}
+	myproc()->my_maps->length[i] = new_size;
+	return myproc()->my_maps->addr[i];
+      } else { // new_size > old_size
+        // cprintf("New_size > old_size\n");
+	
+	// if the space is not big enough
+	if((i + 1 < MAX_WMMAP_INFO && myproc()->my_maps->addr[i + 1] != 0 && myproc()->my_maps->addr[i + 1] <= PGROUNDUP(myproc()->my_maps->addr[i] + new_size)) ||  
+			// if the next one is not big enough
+	    (i == MAX_WMMAP_INFO && PGROUNDUP(myproc()->my_maps->addr[i] + new_size) >= KERNBASE) || 
+	                // or last one to KERNBASE aren't big enough
+	    (myproc()->my_maps->addr[0] != 0 && myproc()->my_maps->addr[0] - 0x60000000 < PGROUNDUP(new_size))) {
+		        // or 0x60000000 to first one aren't big enough 
+	  // cprintf("Space not big enough\n"); 
+	  
+          if(flags == 0) { // map may not move
+	    return FAILED;
+	  } else if(flags == MREMAP_MAYMOVE) { // map may move
+	    for(int j = 0; j < MAX_WMMAP_INFO; j++) {
+	      if(j == MAX_WMMAP_INFO - 1 || myproc()->my_maps->addr[j + 1] == 0) { // next one is not available, then calculate till KERNBASE
+		if(PGROUNDUP(myproc()->my_maps->addr[j] + myproc()->my_maps->length[j]) + PGROUNDUP(new_size) < KERNBASE) {
+		  
+		uint base = PGROUNDUP(myproc()->my_maps->addr[j] + myproc()->my_maps->length[j]);
+	       	for(int k = 0; k < new_size; k += PGSIZE) {
+	            uint new_va = base + k;
+		    uint old_va = old_addr + k;
+		    pte_t *old_pte = walkpgdir(myproc()->pgdir, (void*)old_va, 0);
+		    //pte_t *new_pte = walkpgdir(myproc()->pgdir, (void*)new_va, 0);
+		    if (old_pte && (*old_pte & PTE_P)) {
+	              uint old_pa = PTE_ADDR(*old_pte);
+		      //uint new_pa = PTE_ADDR(*new_pte);
+                      char *mem = kalloc();
+	    	      if (!mem) return FAILED;
+	              memmove((void*)mem, (void*)(P2V(old_pa)), PGSIZE);
+	              if (mappages(myproc()->pgdir, (void*)PGROUNDDOWN(new_va), PGSIZE, V2P(mem), PTE_W | PTE_U) < 0) {
+                        kfree(mem);
+            	        return FAILED;
+	              }
+		      if(myproc()->parent->pid == 2) kfree(P2V(old_pa));
+		      *old_pte = 0;
+		      switchuvm(myproc());
+		    }
+		  }
+                  
+		  myproc()->my_maps->addr[i] = PGROUNDUP(myproc()->my_maps->addr[j] + myproc()->my_maps->length[j]);
+                  myproc()->my_maps->length[i] = new_size;
+                  return myproc()->my_maps->addr[i];
+                }
+	      }
+	      if(myproc()->my_maps->addr[j + 1] - PGROUNDUP(myproc()->my_maps->addr[j] + myproc()->my_maps->length[j]) >= PGROUNDUP(new_size)) {
+	        // if this space is big enough
+		uint base = PGROUNDUP(myproc()->my_maps->addr[j] + myproc()->my_maps->length[j]);
+                for(int k = 0; k < new_size; k += PGSIZE) {
+                  uint new_va = base + k;
+                  uint old_va = old_addr + k;
+                  pte_t *old_pte = walkpgdir(myproc()->pgdir, (void*)old_va, 0);
+                  //pte_t *new_pte = walkpgdir(myproc()->pgdir, (void*)new_va, 0);
+                  if (old_pte && (*old_pte & PTE_P)) {
+                    uint old_pa = PTE_ADDR(*old_pte);
+                    //uint new_pa = PTE_ADDR(*new_pte);
+                    char *mem = kalloc();
+                    if (!mem) return FAILED;
+                    memmove((void*)mem, (void*)(P2V(old_pa)), PGSIZE);
+                    if (mappages(myproc()->pgdir, (void*)PGROUNDDOWN(new_va), PGSIZE, V2P(mem), PTE_W | PTE_U) < 0) {
+                      kfree(mem);
+                      return FAILED;
+                    }
+                    if(myproc()->parent->pid == 2) kfree(P2V(old_pa));
+                    *old_pte = 0;
+                    switchuvm(myproc());
+                  }
+                }
+
+		myproc()->my_maps->addr[i] = PGROUNDUP(myproc()->my_maps->addr[j] + myproc()->my_maps->length[j]);
+		myproc()->my_maps->length[i] = new_size;
+		return myproc()->my_maps->addr[i];
+	      }
+	      // Need to check the 0x60000000 till first mapping as well
+	      if (myproc()->my_maps->addr[0] - 0x60000000 >= PGROUNDUP(new_size)) {
+	        uint base = 0x60000000;
+                for(int k = 0; k < new_size; k += PGSIZE) {
+                  uint new_va = base + k;
+                  uint old_va = old_addr + k;
+                  pte_t *old_pte = walkpgdir(myproc()->pgdir, (void*)old_va, 0);
+                  //pte_t *new_pte = walkpgdir(myproc()->pgdir, (void*)new_va, 0);
+                  if (old_pte && (*old_pte & PTE_P)) {
+                    uint old_pa = PTE_ADDR(*old_pte);
+                    //uint new_pa = PTE_ADDR(*new_pte);
+                    char *mem = kalloc();
+                    if (!mem) return FAILED;
+                    memmove((void*)mem, (void*)(P2V(old_pa)), PGSIZE);
+                    if (mappages(myproc()->pgdir, (void*)PGROUNDDOWN(new_va), PGSIZE, V2P(mem), PTE_W | PTE_U) < 0) {
+                      kfree(mem);
+                      return FAILED;
+                    }
+                    if(myproc()->parent->pid == 2) kfree(P2V(old_pa));
+                    *old_pte = 0;
+                    switchuvm(myproc());
+                    }
+                } 
+		myproc()->my_maps->addr[i] = 0x60000000;
+		myproc()->my_maps->length[i] = new_size;
+                return myproc()->my_maps->addr[i];
+	      }
+	    }
+	    return FAILED; // either its the last one or it doesn't work
+	  }
+	} else { // if space is big enough
+	  // regardless of movable or not, we can return the same mapping
+	  // cprintf("Space is indeed big enough\n");
+	  myproc()->my_maps->length[i] = new_size;
+	  return myproc()->my_maps->addr[i];
+	}
+      }
     }
   }
   return FAILED;
