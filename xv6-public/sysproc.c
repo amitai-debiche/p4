@@ -213,7 +213,7 @@ sys_wunmap(void)
           begin_op();
           ilock(f->ip);
           if ((r = writei(f->ip, (char *)addr + i, f->off, PGSIZE)) > 0)
-            f->off +=r;
+            f->off += r;
           iunlock(f->ip);
           end_op();
         }
