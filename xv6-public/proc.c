@@ -323,6 +323,7 @@ exit(void)
         }
       }
     }
+    kfree((char *)curproc->my_maps);
   } else { // child process
      for(int i = 0; i < 16; i++) {
        if(curproc->my_maps->flagPrivate[i]) { // private then free
@@ -343,7 +344,6 @@ exit(void)
       } 
     }
   } 
-  curproc->my_maps = 0;
 
   begin_op();
   iput(curproc->cwd);
