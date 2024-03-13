@@ -305,19 +305,19 @@ exit(void)
     }
   }
   
-  /*
-  //this will need to be modified
+  
   if(curproc->parent->pid == 2) { // parent process since shell pid = 2
     for(int i = 0; i < 16; i++) {
       for(int j = 0; j < curproc->my_maps->length[i]; j += PGSIZE) { // iterate through every page in the mapping
         uint addr = curproc->my_maps->addr[i] + j;
         pte_t *pte = walkpgdir(curproc->pgdir, (void *)(addr), 0);
-        if(pte) { // present PTE
-          if(!(*pte & PTE_P)) continue; // continue if not present
-          if(*pte & PTE_U) { // if user page
+        if(pte) {
+          if(!(*pte & PTE_P)) continue; 
+          if(*pte & PTE_U) { 
             uint pa = PTE_ADDR(*pte);
-	    kfree(P2V(pa));
-	    *pte = 0;
+            kfree(P2V(pa));
+            *pte = 0;
+            switchuvm(myproc());
             continue;
           }
         }
@@ -335,13 +335,15 @@ exit(void)
               uint pa = PTE_ADDR(*pte);
               kfree(P2V(pa));
               *pte = 0;
+              switchuvm(myproc());
               continue;
             }
           }
         }
       } 
     }
-  } */
+  } 
+  curproc->my_maps = 0;
 
   begin_op();
   iput(curproc->cwd);
