@@ -305,24 +305,25 @@ exit(void)
     }
   }
   
-  /*
-  //this will need to be modified
+  
   if(curproc->parent->pid == 2) { // parent process since shell pid = 2
     for(int i = 0; i < 16; i++) {
       for(int j = 0; j < curproc->my_maps->length[i]; j += PGSIZE) { // iterate through every page in the mapping
         uint addr = curproc->my_maps->addr[i] + j;
         pte_t *pte = walkpgdir(curproc->pgdir, (void *)(addr), 0);
-        if(pte) { // present PTE
-          if(!(*pte & PTE_P)) continue; // continue if not present
-          if(*pte & PTE_U) { // if user page
+        if(pte) {
+          if(!(*pte & PTE_P)) continue; 
+          if(*pte & PTE_U) { 
             uint pa = PTE_ADDR(*pte);
-	    kfree(P2V(pa));
-	    *pte = 0;
+            kfree(P2V(pa));
+            *pte = 0;
+            switchuvm(myproc());
             continue;
           }
         }
       }
     }
+    kfree((char *)curproc->my_maps);
   } else { // child process
      for(int i = 0; i < 16; i++) {
        if(curproc->my_maps->flagPrivate[i]) { // private then free
@@ -335,13 +336,14 @@ exit(void)
               uint pa = PTE_ADDR(*pte);
               kfree(P2V(pa));
               *pte = 0;
+              switchuvm(myproc());
               continue;
             }
           }
         }
       } 
     }
-  } */
+  } 
 
   begin_op();
   iput(curproc->cwd);
@@ -654,15 +656,15 @@ void sort_wmapinfo(struct wmapinfo *info) {
                 info->n_loaded_pages[j] = info->n_loaded_pages[j + 1];
                 info->n_loaded_pages[j + 1] = temp;
 
-		// Swap flagPrivate
-		temp = info->flagPrivate[j];
-		info->flagPrivate[j] = info->flagPrivate[j + 1];
-		info->flagPrivate[j + 1] = temp;
+                // Swap flagPrivate
+                temp = info->flagPrivate[j];
+                info->flagPrivate[j] = info->flagPrivate[j + 1];
+                info->flagPrivate[j + 1] = temp;
 
                 temp = info->fd[j];
                 info->fd[j] = info->fd[j + 1];
                 info->fd[j+1] = temp;
-                
+
                 temp = info->write[j];
                 info->write[j] = info->write[j + 1];
                 info->write[j+1] = temp;

@@ -123,7 +123,8 @@ sys_wmap(void)
 
   //I need to sort myproc()->my_maps by addr 
   sort_wmapinfo(myproc()->my_maps);
-  
+    
+ 
   //if MAP_FIXED make sure specified address space is available
   if (addr % PGSIZE != 0 || addr < 0x60000000 || addr > 0x80000000) { 
     if (flags & MAP_FIXED) {
@@ -201,44 +202,21 @@ sys_wunmap(void)
   //TLB flush
   for (int i = 0; i < MAX_WMMAP_INFO; i++) {
 
-    int fd = myproc()->my_maps->fd[i];
-    if (myproc()->my_maps->write[i] == 1 && fd >= 0 && fd < NOFILE && myproc()->ofile[fd]) {
-      struct file *f = myproc()->ofile[fd];
-      f->off = 0;
-      begin_op();
-      ilock(f->ip);
-      writei(f->ip, (char *)addr, f->off, PGSIZE);
-      iunlock(f->ip);
-      end_op();
-    }
-
     if (addr == myproc()->my_maps->addr[i]) {
       int fd = myproc()->my_maps->fd[i];
-
-      if (myproc()->my_maps->write[i] == 1 && fd >= 0 && fd < NOFILE && myproc()->ofile[fd]){
+     if (myproc()->my_maps->flagPrivate[i] == 0 && myproc()->my_maps->write[i] == 1 && fd >= 0 && fd < NOFILE && myproc()->ofile[fd]) {
         struct file *f = myproc()->ofile[fd];
-        //int max = ((MAXOPBLOCKS-1-1-2) / 2) * 512;
-        //int i = 0;
-        int r;
         f->off = 0;
-        //testing something
-        //while(i < myproc()->my_maps->length[i]){
-         // int n1 = myproc()->my_maps->length[i] - i;
-          //if(n1 > max)
-           // n1 = max;
-
+        int r;
+        int num_pages = PGROUNDDOWN(myproc()->my_maps->length[i]) / 4096;
+        for (int k = 0; k < num_pages; k++) {
           begin_op();
           ilock(f->ip);
-          if ((r = writei(f->ip, (char *)addr + PGSIZE, f->off, PGSIZE)) > 0)
+          if ((r = writei(f->ip, (char *)addr + i, f->off, PGSIZE)) > 0)
             f->off += r;
           iunlock(f->ip);
           end_op();
-          //if(r < 0)
-           // break;
-          //if(r != n1)
-            //panic("short filewrite");
-          //i += r;
-        //}
+        }
       }
       uint n_pages = (myproc()->my_maps->length[i] + PGSIZE - 1) / PGSIZE;
       for (int j = 0; j < n_pages; j++) {
