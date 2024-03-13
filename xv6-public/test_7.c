@@ -136,9 +136,26 @@ int main() {
         printf(1, "Cause: `wmap()` returned %d\n", map2);
         failed();
     }
+    printf(1, "Memory Mapping Information:\n");
+    for (int i = 0; i < winfo2.total_mmaps; i++) {
+        printf(1, "Mapping %d:\n", i+1);
+        printf(1, "Address: %x\n", winfo2.addr[i]);
+        printf(1, "Length: %d\n", winfo2.length[i]);
+        printf(1, "Number of Loaded Pages: %d\n", winfo2.n_loaded_pages[i]);
+    }
+
     // validate mid state
     struct wmapinfo winfo3;
     get_n_validate_wmap_info(&winfo3, 2);     // 2 maps exist
+    printf(1, "Memory Mapping Information:\n");
+    for (int i = 0; i < winfo3.total_mmaps; i++) {
+        printf(1, "Mapping %d:\n", i+1);
+        printf(1, "Address: %x\n", winfo3.addr[i]);
+        printf(1, "Length: %d\n", winfo3.length[i]);
+        printf(1, "Number of Loaded Pages: %d\n", winfo3.n_loaded_pages[i]);
+    }
+
+
     map_exists(&winfo3, map, length, TRUE);   // the map exists
     map_exists(&winfo3, map2, length2, TRUE); // map 2 exists
     printf(1, "Map 2 at 0x%x with length %d. \tOkay.\n", map2, length2);

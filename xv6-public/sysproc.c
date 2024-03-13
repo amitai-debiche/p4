@@ -123,7 +123,8 @@ sys_wmap(void)
 
   //I need to sort myproc()->my_maps by addr 
   sort_wmapinfo(myproc()->my_maps);
-  
+    
+ 
   //if MAP_FIXED make sure specified address space is available
   if (addr % PGSIZE != 0 || addr < 0x60000000 || addr > 0x80000000) { 
     if (flags & MAP_FIXED) {
@@ -309,6 +310,12 @@ sys_getpgdirinfo(void) {
 int
 sys_getwmapinfo(void)
 {
+    sort_wmapinfo(myproc()->my_maps);
+  cprintf("new loop\n");
+    for (int z = 0; z < 16; z++){
+      cprintf("addr: %d, length: %d\n", myproc()->my_maps->addr[z], myproc()->my_maps->length[z]);
+    }
+
   //get pointer
   struct wmapinfo *wminfo;
   if (argptr(0, (char**)&wminfo, sizeof(*wminfo)) < 0)

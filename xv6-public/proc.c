@@ -638,7 +638,7 @@ void sort_wmapinfo(struct wmapinfo *info) {
     int i, j, temp;
     for (i = 0; i < 16 - 1; i++) {
         for (j = 0; j < 16 - i - 1; j++) {
-            if (info->addr[j] > info->addr[j + 1]) {
+            if (info->addr[j] == 0 || (info->addr[j] > info->addr[j + 1] && info->addr[j + 1] != 0)) {
                 // Swap addr
                 temp = info->addr[j];
                 info->addr[j] = info->addr[j + 1];
@@ -654,10 +654,10 @@ void sort_wmapinfo(struct wmapinfo *info) {
                 info->n_loaded_pages[j] = info->n_loaded_pages[j + 1];
                 info->n_loaded_pages[j + 1] = temp;
 
-		// Swap flagPrivate
-		temp = info->flagPrivate[j];
-		info->flagPrivate[j] = info->flagPrivate[j + 1];
-		info->flagPrivate[j + 1] = temp;
+                // Swap flagPrivate
+                temp = info->flagPrivate[j];
+                info->flagPrivate[j] = info->flagPrivate[j + 1];
+                info->flagPrivate[j + 1] = temp;
             }
         }
     }
