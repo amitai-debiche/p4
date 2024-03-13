@@ -310,12 +310,6 @@ sys_getpgdirinfo(void) {
 int
 sys_getwmapinfo(void)
 {
-    sort_wmapinfo(myproc()->my_maps);
-  cprintf("new loop\n");
-    for (int z = 0; z < 16; z++){
-      cprintf("addr: %d, length: %d\n", myproc()->my_maps->addr[z], myproc()->my_maps->length[z]);
-    }
-
   //get pointer
   struct wmapinfo *wminfo;
   if (argptr(0, (char**)&wminfo, sizeof(*wminfo)) < 0)
